@@ -144,9 +144,8 @@ CONTAINS
   ! --- Flux Factor ---
 
 
-  FUNCTION FluxFactor_Scalar &
-    ( D, I_1, I_2, I_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
-    RESULT( FluxFactor )
+  REAL(DP) FUNCTION FluxFactor_Scalar &
+    ( D, I_1, I_2, I_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -155,9 +154,8 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D, I_1, I_2, I_3
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP) :: FluxFactor
 
-    FluxFactor &
+    FluxFactor_Scalar &
       = MIN( MAX( SQRT( Gm_dd_11 * I_1**2 &
                         + Gm_dd_22 * I_2**2 &
                         + Gm_dd_33 * I_3**2 ) &

@@ -4,12 +4,30 @@ MODULE DeviceModule
   USE KindModule, ONLY: &
     DP
 
-#if defined(THORNADO_GPU)
+#if defined(THORNADO_CUDA)
   USE CudaModule, ONLY: &
     stream, &
     cudaGetDeviceCount, &
     cudaSetDevice, &
     cudaStreamCreate
+#elif defined(THORNADO_HIP)
+  USE HipModule, ONLY: &
+    stream, &
+    hipGetDeviceCount, &
+    hipSetDevice, &
+    hipStreamCreate
+#endif
+
+#if defined(THORNADO_LA_HIPBLAS)
+  USE HipblasModule, ONLY: &
+    hipblas_handle, &
+    hipblasCreate, &
+    hipblasGetStream, &
+    hipblasSetStream
+  USE HipsparseModule, ONLY: &
+    hipsparse_handle, &
+    hipsparseCreate, &
+    hipsparseSetStream
 #endif
 
 #if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
@@ -97,20 +115,39 @@ CONTAINS
 #if defined(THORNADO_GPU)
     CALL MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
     CALL MPI_COMM_SIZE( MPI_COMM_WORLD, nranks, ierr )
+#if defined(THORNADO_CUDA)
     ierr = cudaGetDeviceCount( ndevices )
+#elif defined(THORNADO_HIP)
+    ierr = hipGetDeviceCount( ndevices )
+#endif
     IF ( ndevices > 0 ) THEN
       mydevice = MOD( myrank, ndevices )
     ELSE
       WRITE(*,*) 'No CUDA capable device found'
       CALL MPI_FINALIZE( ierr )
     END IF
+#if defined(THORNADO_CUDA)
     ierr = cudaSetDevice( mydevice )
+#elif defined(THORNADO_HIP)
+    ierr = hipSetDevice( mydevice )
+#endif
 #else
     mydevice = -1
     ndevices = 0
 #endif
 
-#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
+#if defined(THORNADO_LA_HIPBLAS)
+    ierr = hipblasCreate( hipblas_handle )
+    ierr = hipdaStreamCreate( stream )
+    ierr = hipblasSetStream( hipblas_handle, stream )
+    !ierr = hipblasGetStream( hipblas_handle, stream )
+
+    !ierr = hipsolverDnCreate( hipsolver_handle )
+    !ierr = hipsolverDnSetStream( hipsolver_handle, stream )
+
+    ierr = hipsparseCreate( hipsparse_handle )
+    ierr = hipsparseSetStream( hipsparse_handle, stream )
+#elif defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
     ierr = cublasCreate_v2( cublas_handle )
     ierr = cudaStreamCreate( stream )
     ierr = cublasSetStream_v2( cublas_handle, stream )

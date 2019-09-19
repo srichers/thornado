@@ -6,8 +6,10 @@ OPENMP_summitdev_xl  = -qsmp=omp:noauto
 OPENMP_summit_gcc    = -fopenmp
 OPENMP_summit_pgi    = -mp
 OPENMP_summit_xl     = -qsmp=omp:noauto
+OPENMP_hal_gcc       = -fopenmp
 OPENMP_OL_summit_pgi = $(OPENMP_summit_pgi)
 OPENMP_OL_summit_xl  = $(OPENMP_summit_xl) -qoffload
+OPENMP_OL_hal_gcc    = $(OPENMP_hal_gcc) -foffload="-march=gfx900 -lm -lgfortran"
 ifeq ($(USE_OMP),TRUE)
 OPENMP               = $(OPENMP_$(MACHINE))
 else ifeq ($(USE_OMP_OL),TRUE)
@@ -22,6 +24,7 @@ OPENACC_summitdev_xl =
 OPENACC_summit_gcc   = -fopenacc
 OPENACC_summit_pgi   = -acc -ta=tesla:cc70,cuda10.1,ptxinfo -Minfo=accel
 OPENACC_summit_xl    =
+OPENACC_hal_gcc      = -fopenacc
 ifeq ($(USE_OACC),TRUE)
 OPENACC              = $(OPENACC_$(MACHINE))
 endif
@@ -34,6 +37,7 @@ C_summitdev_xl       = mpic++ -std=c++11 $(OPENMP)
 C_summit_gcc         = mpic++ -std=c++11 $(OPENMP)
 C_summit_pgi         = mpic++ --c++11 $(OPENMP)
 C_summit_xl          = mpic++ -std=c++11 $(OPENMP)
+C_hal_gcc            = mpic++ -std=c++11 $(OPENMP)
 C                    = $(C_$(MACHINE))
 
 FORTRAN_mac_gnu      = mpif90 -fopenmp -cpp
@@ -58,6 +62,7 @@ FORTRAN_summitdev_xl = mpifort -qpreprocess
 FORTRAN_summit_gcc   = mpifort -cpp
 FORTRAN_summit_pgi   = mpifort -Mpreprocess
 FORTRAN_summit_xl    = mpifort -qpreprocess
+FORTRAN_hal_gcc      = mpif90 -cpp
 FORTRAN              = $(FORTRAN_$(MACHINE)) $(OPENMP) $(OPENACC)
 
 SUFFIX_f90_mac_gnu      =
@@ -81,6 +86,7 @@ SUFFIX_f90_summitdev_xl =
 SUFFIX_f90_summit_gcc   =
 SUFFIX_f90_summit_pgi   =
 SUFFIX_f90_summit_xl    =
+SUFFIX_f90_hal_gcc      =
 SUFFIX_f90              = $(SUFFIX_f90_$(MACHINE))
 
 FLINKER_mac_gnu      = mpif90 -fopenmp
@@ -105,6 +111,7 @@ FLINKER_summitdev_xl = mpifort -qpreprocess
 FLINKER_summit_gcc   = mpifort -cpp
 FLINKER_summit_pgi   = mpifort -Mpreprocess
 FLINKER_summit_xl    = mpifort -qpreprocess
+FLINKER_hal_gcc      = /opt/mentor/sourceryg++-2019.05/bin/x86_64-none-linux-gnu-gfortran -cpp -L/opt/mentor/sourceryg++-2019.05/x86_64-none-linux-gnu/lib64 -lgomp -L/usr/lib/x86_64-linux-gnu/openmpi/lib -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi
 FLINKER              = $(FLINKER_$(MACHINE)) $(OPENMP) $(OPENACC)
 
 FLAGS_DEBUG        = $(DEBUG)
@@ -130,6 +137,7 @@ DEBUG_summitdev_xl = -g9 -qtbtable=full -O2 -qsclk=micro -qstrict=all -qsuppress
 DEBUG_summit_gcc   = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
 DEBUG_summit_pgi   = -O0 -Mbounds -Mnoopenmp -Ktrap=fp
 DEBUG_summit_xl    = -g9 -qtbtable=full -O2 -qsclk=micro -qstrict=all -qsuppress=cmpmsg -qflag=i:w -qfloat=rngchk -qcheck=all:nounset -qflttrap=enable:invalid:nanq:overflow:zerodivide -qsigtrap=xl__trcedump
+DEBUG_hal_gcc      = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
 DEBUG              = $(DEBUG_$(MACHINE))
 
 FLAGS_OPTIMIZE        = $(OPTIMIZE)
@@ -156,6 +164,7 @@ OPTIMIZE_summitdev_xl = -g -O3 -qnohot -qarch=pwr8 -qtune=pwr8 -qsclk=micro -qsu
 OPTIMIZE_summit_gcc   = -g -O3 -mcpu=power9
 OPTIMIZE_summit_pgi   = -g -O3 -tp=pwr9
 OPTIMIZE_summit_xl    = -g -O3 -qnohot -qarch=pwr9 -qtune=pwr9 -qsclk=micro -qsuppress=cmpmsg -w
+OPTIMIZE_hal_gcc      = -g -O3
 OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 
 INCLUDE_HDF5_mac_gnu           = -I/usr/local/include
@@ -181,6 +190,7 @@ INCLUDE_HDF5_summitdev_xl      = -I$(OLCF_HDF5_ROOT)/include
 INCLUDE_HDF5_summit_gcc        = -I$(OLCF_HDF5_ROOT)/include
 INCLUDE_HDF5_summit_pgi        = -I$(OLCF_HDF5_ROOT)/include
 INCLUDE_HDF5_summit_xl         = -I$(OLCF_HDF5_ROOT)/include
+INCLUDE_HDF5_hal_gcc           = -I/home/user40/hdf5/include
 INCLUDE_HDF5                   = $(INCLUDE_HDF5_$(MACHINE))
 
 INCLUDE_POSEIDON_mac_gnu       =
@@ -201,6 +211,7 @@ INCLUDE_LAPACK_summitdev_xl    = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAP
 INCLUDE_LAPACK_summit_gcc      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_pgi      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
+INCLUDE_LAPACK_hal_gcc         = -I/usr/include
 INCLUDE_LAPACK                 = $(INCLUDE_LAPACK_$(MACHINE))
 
 INCLUDE_CUDA_titan_gnu         = -I$(CUDATOOLKIT_HOME)/include
@@ -211,7 +222,11 @@ INCLUDE_CUDA_summitdev_xl      = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA_summit_gcc        = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA_summit_pgi        = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA_summit_xl         = -I$(OLCF_CUDA_ROOT)/include
+INCLUDE_CUDA_hal_gcc           =
 INCLUDE_CUDA                   = $(INCLUDE_CUDA_$(MACHINE))
+
+INCLUDE_HIP_hal_gcc            = -I/opt/rocm/include
+INCLUDE_HIP                    = $(INCLUDE_HIP_$(MACHINE))
 
 INCLUDE_MAGMA_titan_gnu        = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_titan_pgi        = -I$(OLCF_MAGMA_ROOT)/include
@@ -221,6 +236,7 @@ INCLUDE_MAGMA_summitdev_xl     = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_summit_gcc       = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_summit_pgi       = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_summit_xl        = -I$(OLCF_MAGMA_ROOT)/include
+INCLUDE_MAGMA_hal_gcc          =
 INCLUDE_MAGMA                  = $(INCLUDE_MAGMA_$(MACHINE))
 
 INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_POSEIDON)
@@ -249,6 +265,7 @@ LIBRARIES_HDF5_summitdev_xl    = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_summit_gcc      = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_summit_pgi      = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_summit_xl       = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_hal_gcc         = -L/home/user40/hdf5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5                 = $(LIBRARIES_HDF5_$(MACHINE))
 
 LIBRARIES_POSEIDON_mac_gnu     =
@@ -277,6 +294,7 @@ LIBRARIES_LAPACK_summit_pgi    = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
 LIBRARIES_LAPACK_summit_xl     = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
+LIBRARIES_LAPACK_hal_gcc       = -L/usr/lib/x86_64-linux-gnu -llapack -lblas
 LIBRARIES_LAPACK               = $(LIBRARIES_LAPACK_$(MACHINE))
 
 LIBRARIES_CUDA_titan_gnu       = -L$(CUDATOOLKIT_HOME)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
@@ -287,7 +305,11 @@ LIBRARIES_CUDA_summitdev_xl    = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver
 LIBRARIES_CUDA_summit_gcc      = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
 LIBRARIES_CUDA_summit_pgi      = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
 LIBRARIES_CUDA_summit_xl       = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
+LIBRARIES_CUDA_hal_gcc         =
 LIBRARIES_CUDA                 = $(LIBRARIES_CUDA_$(MACHINE))
+
+LIBRARIES_HIP_hal_gcc          = -L/opt/rocm/lib -lhipsparse -lhipblas -lhip_hcc
+LIBRARIES_HIP                  = $(LIBRARIES_HIP_$(MACHINE))
 
 LIBRARIES_MAGMA_titan_gnu      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_titan_pgi      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
@@ -297,6 +319,7 @@ LIBRARIES_MAGMA_summitdev_xl   = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_summit_gcc     = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_summit_pgi     = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_summit_xl      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
+LIBRARIES_MAGMA_hal_gcc        = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA                = $(LIBRARIES_MAGMA_$(MACHINE))
 
 LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_POSEIDON)
@@ -325,9 +348,16 @@ $(PP)-DHYDRO_$(HYDRO) \
 $(PP)-DHYDRO_NUMERICALFLUX_$(NUMERICALFLUX)
 
 ifeq ($(USE_GPU),TRUE)
-   INCLUDE      += $(INCLUDE_CUDA)
-   LIBRARIES    += $(LIBRARIES_CUDA)
    DEFINES      += $(PP)-DTHORNADO_GPU
+   ifeq ($(USE_CUDA),TRUE)
+      INCLUDE      += $(INCLUDE_CUDA)
+      LIBRARIES    += $(LIBRARIES_CUDA)
+      DEFINES      += $(PP)-DTHORNADO_CUDA
+   else ifeq ($(USE_HIP),TRUE)
+      INCLUDE      += $(INCLUDE_HIP)
+      LIBRARIES    += $(LIBRARIES_HIP)
+      DEFINES      += $(PP)-DTHORNADO_HIP
+   endif
    ifeq ($(USE_OACC),TRUE)
       DEFINES   += $(PP)-DTHORNADO_OACC
       DEFINES   += $(PP)-D$(MICROPHYSICS)_OACC
@@ -341,6 +371,8 @@ ifeq ($(USE_GPU),TRUE)
       DEFINES   += $(PP)-DTHORNADO_LA_MAGMA
    else ifeq ($(USE_CUBLAS),TRUE)
       DEFINES   += $(PP)-DTHORNADO_LA_CUBLAS
+   else ifeq ($(USE_HIPBLAS),TRUE)
+      DEFINES   += $(PP)-DTHORNADO_LA_HIPBLAS
    endif
 else
    ifeq ($(USE_OMP),TRUE)

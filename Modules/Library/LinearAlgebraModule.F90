@@ -39,6 +39,37 @@ MODULE LinearAlgebraModule
     cusparse_handle, &
     cusparseDgthr, &
     CUSPARSE_INDEX_BASE_ONE
+#elif defined(THORNADO_LA_HIPBLAS)
+  USE HipModule, ONLY: &
+    stream, &
+    hipStreamSynchronize
+  !USE HipblasModule, ONLY: &
+  !  hipblasDtrsv, &
+  !  hipblasDdgmm, &
+  !  hipblasDgetrfBatched, &
+  !  hipblasDgetrsBatched
+  USE HipblasModule, ONLY: &
+    hipblas_handle, &
+    hipblasDnrm2, &
+    hipblasDaxpy, &
+    hipblasDgemm, &
+    hipblasDgemmStridedBatched, &
+    hipblasDgemv, &
+    hipblasDtrsm, &
+    hipblasDgeam, &
+    HIPBLAS_OP_N, CUBLAS_OP_T, &
+    HIPBLAS_SIDE_LEFT, &
+    HIPBLAS_FILL_MODE_UPPER, &
+    HIPBLAS_DIAG_NON_UNIT
+  !USE HipsolverModule, ONLY: &
+  !  hipsolver_handle, &
+  !  hipsolverDnDgeqrf_bufferSize, &
+  !  hipsolverDnDgeqrf, &
+  !  hipsolverDnDormqr
+  USE HipsparseModule, ONLY: &
+    hipsparse_handle, &
+    hipsparseDgthr, &
+    HIPSPARSE_INDEX_BASE_ONE
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
@@ -87,6 +118,12 @@ CONTAINS
       itrans_from_char = CUBLAS_OP_T
     ELSE
       itrans_from_char = CUBLAS_OP_N
+    END IF
+#elif defined(THORNADO_LA_HIPBLAS)
+    IF ( ctrans == 'T' ) THEN
+      itrans_from_char = HIPBLAS_OP_T
+    ELSE
+      itrans_from_char = HIPBLAS_OP_N
     END IF
 #elif defined(THORNADO_LA_MAGMA)
     IF ( ctrans == 'T' ) THEN
@@ -154,7 +191,7 @@ CONTAINS
       itransb = itrans_from_char( transb )
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
+      !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( pa, pb, pc )
 #elif defined(THORNADO_OACC)
       !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
 #endif
@@ -171,6 +208,10 @@ CONTAINS
       ierr = cublasDgeam &
              ( cublas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_HIPBLAS)
+      ierr = hipblasDgeam &
+             ( hipblas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       IF ( transb  == 'N' ) THEN
         CALL magmablas_dlacpy &
@@ -336,7 +377,7 @@ CONTAINS
       itransb = itrans_from_char( transb )
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
+      !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( pa, pb, pc )
 #elif defined(THORNADO_OACC)
       !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
 #endif
@@ -353,6 +394,10 @@ CONTAINS
       ierr = cublasDgemm_v2 &
              ( cublas_handle, itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_HIPBLAS)
+      ierr = hipblasDgemm &
+             ( hipblas_handle, itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemm &
              ( itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc, magma_queue )
@@ -434,7 +479,7 @@ CONTAINS
       itransb = itrans_from_char( transb )
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
+      !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( pa, pb, pc )
 #elif defined(THORNADO_OACC)
       !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
 #endif
@@ -452,6 +497,11 @@ CONTAINS
              ( cublas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea, &
                db, ldb, strideb, beta, dc, ldc, stridec, batchcount )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_HIPBLAS)
+      ierr = hipblasDgemmStridedBatched &
+             ( hipblas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea, &
+               db, ldb, strideb, beta, dc, ldc, stridec, batchcount )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dgemm_batched_strided &
              ( itransa, itransb, m, n, k, alpha, da, lda, stridea, &
@@ -538,7 +588,7 @@ CONTAINS
 #endif
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pipiv, pinfo )
+      !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( pa, pb, pipiv, pinfo )
 #elif defined(THORNADO_OACC)
       !$ACC HOST_DATA USE_DEVICE( pa, pb, pipiv, pinfo )
 #endif
@@ -559,7 +609,7 @@ CONTAINS
 #endif
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( da, db, dipiv )
+      !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( da, db, dipiv )
 #elif defined(THORNADO_OACC)
       !$ACC HOST_DATA USE_DEVICE( da, db, dipiv )
 #endif
@@ -580,6 +630,12 @@ CONTAINS
       ierr = cublasDgetrsBatched &
              ( cublas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_HIPBLAS)
+      !ierr = hipblasDgetrfBatched &
+      !       ( hipblas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount )
+      !ierr = hipblasDgetrsBatched &
+      !       ( hipblas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
+      !ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgetrf_batched &
              ( n, n, da_array, lda, dipiv_array, dinfo, batchcount, magma_queue )
@@ -673,7 +729,7 @@ CONTAINS
       itrans = itrans_from_char( trans )
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, px, py )
+      !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( pa, px, py )
 #elif defined(THORNADO_OACC)
       !$ACC HOST_DATA USE_DEVICE( pa, px, py )
 #endif
@@ -690,6 +746,10 @@ CONTAINS
       ierr = cublasDgemv_v2 &
              ( cublas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_HIPBLAS)
+      ierr = hipblasDgemv &
+             ( hipblas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemv &
              ( itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy, magma_queue )
@@ -753,7 +813,7 @@ CONTAINS
     IF ( data_on_device ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pc, px )
+      !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( pa, pc, px )
 #elif defined(THORNADO_OACC)
       !$ACC HOST_DATA USE_DEVICE( pa, pc, px )
 #endif
@@ -770,6 +830,10 @@ CONTAINS
       ierr = cublasDdgmm &
              ( cublas_handle, CUBLAS_SIDE_LEFT, m, n, da, lda, dx, incx, dc, ldc )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_HIPBLAS)
+      !ierr = hipblasDdgmm &
+      !       ( hipblas_handle, hipblas_SIDE_LEFT, m, n, da, lda, dx, incx, dc, ldc )
+      !ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dlacpy &
              ( MagmaFull, m, n, da, lda, dc, ldc, magma_queue )
@@ -845,7 +909,7 @@ CONTAINS
     hwork = C_LOC( pwork )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb )
+    !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( pa, pb )
 #elif defined(THORNADO_OACC)
     !$ACC HOST_DATA USE_DEVICE( pa, pb )
 #endif
@@ -862,6 +926,9 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
     ierr = cusolverDnDgeqrf_bufferSize &
            ( cusolver_handle, m, n, da, lda, lwork )
+#elif defined(THORNADO_LA_HIPBLAS)
+    !ierr = hipsolverDnDgeqrf_bufferSize &
+    !       ( hipsolver_handle, m, n, da, lda, lwork )
 #elif defined(THORNADO_LA_MAGMA)
     CALL magma_dgels_gpu &
            ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
@@ -928,7 +995,7 @@ CONTAINS
       itrans = itrans_from_char( trans )
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, ptau, pwork, pinfo )
+      !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( pa, pb, ptau, pwork, pinfo )
 #elif defined(THORNADO_OACC)
       !$ACC HOST_DATA USE_DEVICE( pa, pb, ptau, pwork, pinfo )
 #endif
@@ -968,6 +1035,31 @@ CONTAINS
 
       END IF
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_HIPBLAS)
+      !ierr = hipsolverDnDgeqrf &
+      !       ( hipsolver_handle, m, n, da, lda, dtau, dwork, lwork, dinfo )
+      !ierr = hipsolverDnDormqr &
+      !       ( hipsolver_handle, &
+      !         HIPBLAS_SIDE_LEFT, HIPBLAS_OP_T, &
+      !         m, nrhs, n, da, lda, dtau, db, ldb, dwork, lwork, dinfo )
+      !ierr = hipStreamSynchronize( stream )
+
+      !IF ( nrhs == 1 ) THEN
+
+      !  ierr = hipblasDtrsv &
+      !         ( hipblas_handle, &
+      !           HIPBLAS_FILL_MODE_UPPER, HIPBLAS_OP_N, HIPBLAS_DIAG_NON_UNIT, &
+      !           n, da, lda, db, 1 )
+
+      !ELSE
+
+      !  ierr = hipblasDtrsm &
+      !         ( hipblas_handle, &
+      !           HIPBLAS_SIDE_LEFT, HIPBLAS_FILL_MODE_UPPER, HIPBLAS_OP_N, HIPBLAS_DIAG_NON_UNIT, &
+      !           n, nrhs, One, da, lda, db, ldb )
+
+      !END IF
+      !ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgels_gpu &
              ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
@@ -1024,7 +1116,7 @@ CONTAINS
     IF ( data_on_device ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( px )
+      !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( px )
 #elif defined(THORNADO_OACC)
       !$ACC HOST_DATA USE_DEVICE( px )
 #endif
@@ -1038,6 +1130,9 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDnrm2_v2( cublas_handle, n, dx, incx, xnorm )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_HIPBLAS)
+      ierr = hipblasDnrm2( hipblas_handle, n, dx, incx, xnorm )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       xnorm = magma_dnrm2( n, dx, incx, magma_queue )
       CALL magma_queue_sync( magma_queue )
@@ -1126,7 +1221,7 @@ CONTAINS
     IF ( data_on_device ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( px, py )
+      !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( px, py )
 #elif defined(THORNADO_OACC)
       !$ACC HOST_DATA USE_DEVICE( px, py )
 #endif
@@ -1141,6 +1236,9 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDaxpy_v2( cublas_handle, n, alpha, dx, incx, dy, incy )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_HIPBLAS)
+      ierr = hipblasDaxpy( hipblas_handle, n, alpha, dx, incx, dy, incy )
+      ierr = hipStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       xnorm = magma_daxpy( n, alpha, dx, incx, dy, incy, magma_queue )
       CALL magma_queue_sync( magma_queue )
@@ -1195,7 +1293,7 @@ CONTAINS
     IF ( data_on_device ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( pxval, pxind, py )
+      !$OMP TARGET DATA MAP(alloc:ierr) USE_DEVICE_PTR( pxval, pxind, py )
 #elif defined(THORNADO_OACC)
       !$ACC HOST_DATA USE_DEVICE( pxval, pxind, py )
 #endif
@@ -1211,6 +1309,9 @@ CONTAINS
 #if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
       ierr = cusparseDgthr( cusparse_handle, nnz, dy, dxval, dxind, CUSPARSE_INDEX_BASE_ONE )
       ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_HIPBLAS)
+      ierr = hipsparseDgthr( hipsparse_handle, nnz, dy, dxval, dxind, hipsparse_INDEX_BASE_ONE )
+      ierr = hipStreamSynchronize( stream )
 #endif
 
     ELSE

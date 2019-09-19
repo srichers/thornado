@@ -106,6 +106,7 @@ MODULE NeutrinoOpacitiesComputationModule
 
   REAL(DP), PARAMETER :: C1(iNuE:iNuE_Bar) = [ ( cv + ca )**2, ( cv - ca )**2 ]
   REAL(DP), PARAMETER :: C2(iNuE:iNuE_Bar) = [ ( cv - ca )**2, ( cv + ca )**2 ]
+  !$OMP DECLARE TARGET TO(C1,C2)
 
   INTERFACE ComputeEquilibriumDistributions_Point
     MODULE PROCEDURE ComputeEquilibriumDistributions_Point_1

@@ -6,10 +6,15 @@ else ifeq ($(USE_CUBLAS),TRUE)
    USE_GPU = TRUE
 else ifeq ($(USE_MAGMA),TRUE)
    USE_GPU = TRUE
+else ifeq ($(USE_HIPBLAS),TRUE)
+   USE_GPU = TRUE
 endif
 
 USE_GPU ?= FALSE
 ifeq ($(USE_GPU),TRUE)
+
+   USE_CUDA  ?= TRUE
+   USE_HIP   ?= FALSE
 
    USE_OMP   ?= FALSE
 
@@ -23,17 +28,27 @@ ifeq ($(USE_GPU),TRUE)
    USE_MAGMA ?= FALSE
    ifeq ($(USE_MAGMA),TRUE)
       USE_CUBLAS ?= FALSE
+      USE_HIPBLAS ?= FALSE
    else
-      USE_CUBLAS ?= TRUE
+      ifeq ($(USE_CUDA),TRUE)
+          USE_CUBLAS ?= TRUE
+          USE_HIPBLAS ?= FALSE
+      else ifeq ($(USE_HIP),TRUE)
+          USE_CUBLAS ?= FALSE
+          USE_HIPBLAS ?= TRUE
+      endif
    endif
 
 else
 
+   USE_CUDA   ?= FALSE
+   USE_HIP    ?= FALSE
    USE_OMP    ?= FALSE
    USE_OACC   ?= FALSE
    USE_OMP_OL ?= FALSE
    USE_MAGMA  ?= FALSE
    USE_CUBLAS ?= FALSE
+   USE_HIPBLAS ?= FALSE
 
 endif
 
