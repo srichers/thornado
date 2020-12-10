@@ -8,6 +8,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     amrex_box
   USE amrex_geometry_module,            ONLY: &
     amrex_geometry
+  USE amrex_fillpatch_module, ONLY: &
+    amrex_fillpatch
   USE amrex_multifab_module,            ONLY: &
     amrex_multifab,         &
     amrex_multifab_build,   &
@@ -29,7 +31,8 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE ProgramHeaderModule,              ONLY: &
     swX,   &
     nDOFX, &
-    nX
+    nX,   &
+    nDimsX
   USE FluidFieldsModule,                ONLY: &
     nCF
   USE GeometryFieldsModule,             ONLY: &
@@ -266,17 +269,30 @@ CONTAINS
 
       DO iLevel = 0, nLevels-1
 
-        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
-
-        CALL MF_U(iLevel) &
-               % COPY( MF_uCF(iLevel), 1, 1, &
-                       MF_uCF(iLevel) % nComp(), swX )
-
-        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
+!!$        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
+!!$
+!!$        CALL MF_U(iLevel) &
+!!$               % COPY( MF_uCF(iLevel), 1, 1, &
+!!$                       MF_uCF(iLevel) % nComp(), swX )
+!!$
+!!$        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
 
         ! --- Apply boundary conditions to interior domains ---
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
+
+        IF( iLevel .EQ. 0 )THEN
+
+          CALL FillPatch_0 &
+                 ( t(iLevel), GEOM(iLevel), MF_U(iLevel), MF_uCF(iLevel) )
+
+        ELSE
+
+          CALL FillPatch &
+                 ( iLevel, t(iLevel), GEOM(iLevel-1), GEOM(iLevel), &
+                   MF_U(iLevel), MF_uCF(iLevel-1), MF_uCF(iLevel) )
+
+        END IF
 
         CALL MF_U(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
@@ -356,6 +372,124 @@ CONTAINS
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
   END SUBROUTINE MF_UpdateFluid_SSPRK
+
+
+  SUBROUTINE FillPatch_0( Time, GEOM, MF, MF_Fine )
+
+    REAL(AR),             INTENT(in)    :: Time
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM
+    TYPE(amrex_multifab), INTENT(inout) :: MF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_Fine
+
+    CALL amrex_fillpatch &
+      ( MF, &
+        Time, MF_Fine, Time, MF_Fine, GEOM, FillPhysBC, &
+        Time, 1, 1, MF % nComp() )
+
+  END SUBROUTINE FillPatch_0
+
+
+  SUBROUTINE FillPatch &
+    ( iLevel, Time, GEOM_Coarse, GEOM_Fine, MF, MF_Coarse, MF_Fine )
+
+    USE amrex_interpolater_module, ONLY: &
+      amrex_interp_dg
+    USE amrex_base_module, ONLY: &
+      amrex_bc_int_dir
+
+    INTEGER,              INTENT(in)    :: iLevel
+    REAL(AR),             INTENT(in)    :: Time
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM_Coarse
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM_Fine
+    TYPE(amrex_multifab), INTENT(inout) :: MF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_Coarse
+    TYPE(amrex_multifab), INTENT(inout) :: MF_Fine
+
+    INTEGER :: lo_bc(nDimsX,1), hi_bc(nDimsX,1)
+    INTEGER :: ref_ratio = 2
+
+    lo_bc = amrex_bc_int_dir
+    hi_bc = amrex_bc_int_dir
+
+    CALL amrex_fillpatch &
+           ( MF, &
+             Time, MF_Coarse, Time, MF_Coarse, GEOM_Coarse, FillPhysBC, &
+             Time, MF_Fine  , Time, MF_Fine,   GEOM_Fine,   FillPhysBC, &
+             Time, 1, 1, MF % nComp(), ref_ratio, &
+             amrex_interp_dg, lo_bc, hi_bc)
+
+  END SUBROUTINE FillPatch
+
+
+  SUBROUTINE FillPhysBC( pMF, sComp, nComp, Time, pGEOM ) BIND(c)
+
+    USE amrex_geometry_module, ONLY: &
+      amrex_is_all_periodic
+    USE amrex_filcc_module, ONLY: &
+      amrex_filcc
+!    USE bc_module, ONLY: &
+!      lo_bc, hi_bc
+    USE ISO_C_BINDING
+    USE amrex_base_module, ONLY: &
+      amrex_bc_int_dir
+
+    TYPE(c_ptr),    VALUE :: pMF, pGEOM
+    INTEGER(c_int), VALUE :: sComp, nComp
+    REAL(AR),       VALUE :: Time
+
+    TYPE(amrex_geometry) :: GEOM
+    TYPE(amrex_multifab) :: MF
+    TYPE(amrex_mfiter)   :: MFI
+    INTEGER              :: pLo(4), pHi(4)
+    REAL(AR), CONTIGUOUS, POINTER, DIMENSION(:,:,:,:) :: p
+
+    INTEGER :: lo_bc(nDimsX,1), hi_bc(nDimsX,1)
+
+    lo_bc = amrex_bc_int_dir
+    hi_bc = amrex_bc_int_dir
+
+    IF( .NOT. amrex_is_all_periodic() )THEN
+
+       GEOM = pGEOM
+       MF   = pMF
+
+       !$OMP PARALLEL PRIVATE( MFI, p, pLo, pHi)
+       CALL amrex_mfiter_build( MFI, MF, TILING = .FALSE. )
+
+       DO WHILE( MFI % next() )
+
+          p => MF % DataPtr( MFI )
+          IF( .NOT. GEOM % DOMAIN % CONTAINS(p) )THEN
+
+             ! part of this box is outside the domain
+
+             pLo = LBOUND(p)
+             pHi = UBOUND(p)
+
+             CALL amrex_filcc &
+                    ( p, pLo, pHi, &
+                        ! fortran array and bounds
+                      GEOM % DOMAIN % Lo, GEOM % DOMAIN % Hi, &
+                        ! index exten of whole problem domain
+                      GEOM % dx, &
+                        ! cell size in real
+                      GEOM % get_physical_location(pLo), &
+                        ! physical location of lower left corner
+                      lo_bc, hi_bc )
+                        ! bc types for each component
+
+             ! amrex_filcc doesn't fill EXT_DIR
+             ! (see amrex_bc_types_module for a list of bc types
+             ! In that case, the user needs to fill it.
+
+          END IF
+
+       END DO
+       !$OMP END PARALLEL
+
+    END IF
+
+  END SUBROUTINE FillPhysBC
 
 
 END MODULE MF_TimeSteppingModule_SSPRK
