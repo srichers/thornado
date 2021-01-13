@@ -407,6 +407,7 @@ CONTAINS
         WRITE(*,*)
         WRITE(*,'(4x,A)') 'INFO: Equation of State (IDEAL)'
         WRITE(*,'(4x,A)') '-------------------------------'
+        WRITE(*,*)
         WRITE(*,'(6x,A,ES10.3E2)') 'Gamma = ', Gamma_IDEAL
 
       END IF
@@ -476,7 +477,6 @@ CONTAINS
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
-stop 'InitializeProgram'
   END SUBROUTINE InitializeProgram
 
 

@@ -110,7 +110,7 @@ if ( File[-1] == '/' ): File = File[:-1]
 ds = yt.load( '{:}'.format( DataDirectory + File ) )
 
 print( 'Reading from file: {:}'.format( File ) )
-Level = 0
+Level = ds.index.max_level
 Time  = ds.current_time
 nX    = ds.domain_dimensions
 xL    = ds.domain_left_edge
