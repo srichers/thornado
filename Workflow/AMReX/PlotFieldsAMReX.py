@@ -37,25 +37,25 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 #### ========== User Input ==========
 
 # Specify name of problem
-ProblemName = 'SASI'
+ProblemName = 'Advection2D'
 
 # Specify directory containing plotfiles
-DataDirectory = THORNADO_DIR + 'SandBox/AMReX/'
+DataDirectory = THORNADO_DIR + 'SandBox/AMReX/Euler_Relativistic_IDEAL/'
 
 # Specify plot file base name
-PlotFileBaseName = 'thornado'
+PlotFileBaseName = 'plt'
 
 # Specify field to plot
 Field = 'PF_D'
 
 # Specify to plot in log-scale
-UseLogScale = True
+UseLogScale = False
 
 # Specify whether or not to use physical units
-UsePhysicalUnits = True
+UsePhysicalUnits = False
 
 # Specify coordinate system (currently supports 'cartesian' and 'spherical' )
-CoordinateSystem = 'spherical'
+CoordinateSystem = 'cartesian'
 
 # Specify aspect ratio (relativistic KHI needs aspect = 0.5)
 aspect = 1.0
@@ -110,11 +110,11 @@ if ( File[-1] == '/' ): File = File[:-1]
 ds = yt.load( '{:}'.format( DataDirectory + File ) )
 
 print( 'Reading from file: {:}'.format( File ) )
-MaxLevel = ds.index.max_level
-Time     = ds.current_time
-nX       = ds.domain_dimensions
-xL       = ds.domain_left_edge
-xH       = ds.domain_right_edge
+Level = 0
+Time  = ds.current_time
+nX    = ds.domain_dimensions
+xL    = ds.domain_left_edge
+xH    = ds.domain_right_edge
 
 # Get dimensionality of problem
 if  ( nX[1] == 1 and nX[2] == 1 ):
@@ -123,6 +123,9 @@ elif( nX[2] == 1 ):
     nDims = 2
 else:
     nDims = 3
+
+for iDim in range( nDims ):
+    nX[iDim] = nX[iDim] * 2**Level
 
 TimeUnit = ''
 if( UsePhysicalUnits ): TimeUnit = 'ms'
@@ -134,10 +137,10 @@ construction_data_containers.YTCoveringGrid
 """
 CoveringGrid \
   = ds.covering_grid \
-      ( level           = MaxLevel, \
+      ( level           = Level, \
         left_edge       = xL, \
-        dims            = nX * 2**MaxLevel, \
-        num_ghost_zones = nX[0] )
+        dims            = nX )
+#        num_ghost_zones = nX[0] )
 
 # XXX.to_ndarray() strips yt array of units
 
@@ -334,10 +337,9 @@ if  ( nDims == 1 ):
 
                 CoveringGrid \
                   = ds.covering_grid \
-                      ( level           = MaxLevel, \
+                      ( level           = Level, \
                         left_edge       = xL, \
-                        dims            = nX * 2**MaxLevel, \
-                        num_ghost_zones = nX[0] )
+                        dims            = nX )
 
                 if( Field == 'PolytropicConstant' ):
 
@@ -486,7 +488,7 @@ elif( nDims == 2 ):
     #slc.set_colorbar_label( field, 'Primitive Rest-Mass-Density' )
 
     slc.save( ProblemName + '_' + PlotFileBaseName + '_' + Field \
-                + '_{:}.png'.format( File[-8:] ) )
+                + '_{:}_{:}.png'.format( File[-8:], Level ) )
 
     if( MakeDataFile ):
 
@@ -510,10 +512,10 @@ elif( nDims == 2 ):
 
                 CoveringGrid \
                   = ds.covering_grid \
-                      ( level           = MaxLevel, \
+                      ( level           = Level, \
                         left_edge       = xL, \
-                        dims            = nX * 2**MaxLevel, \
-                        num_ghost_zones = nX[0] )
+                        dims            = nX )
+#                        num_ghost_zones = nX[0] )
 
                 Data[i] = CoveringGrid[Field].to_ndarray()[:,:,0]
                 Time[i] = ds.current_time

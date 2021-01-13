@@ -149,6 +149,7 @@ MODULE InitializationModule
     nLevels,                   &
     iRestart,                  &
     MaxGridSizeX,              &
+    BX,                        &
     BA,                        &
     DM,                        &
     GEOM,                      &
@@ -178,11 +179,8 @@ CONTAINS
 
     INTEGER               :: iLevel, iDim
     TYPE(amrex_parmparse) :: PP
-    TYPE(amrex_box)       :: BX
-
     LOGICAL               :: SolveGravity
     REAL(AR)              :: Mass
-
 
     ! --- Initialize AMReX ---
 
@@ -198,35 +196,42 @@ CONTAINS
 
     IF( iRestart .LT. 0 )THEN
 
-      BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
-
-      ALLOCATE( BA(0:nLevels-1) )
-
-      DO iLevel = 0, nLevels-1
-
-        CALL amrex_boxarray_build( BA(iLevel), BX )
-
-      END DO
+      ALLOCATE( BX  (0:nLevels-1) )
+      ALLOCATE( BA  (0:nLevels-1) )
+      ALLOCATE( DM  (0:nLevels-1) )
+      ALLOCATE( GEOM(0:nLevels-1) )
 
       DO iLevel = 0, nLevels-1
+
+        IF( amrex_spacedim .EQ. 1 )THEN
+
+          BX(iLevel) = amrex_box( [ 1, 1, 1 ], &
+                                  [ 2**iLevel * nX(1), nX(2), nX(3) ] )
+
+        ELSE IF( amrex_spacedim .EQ. 2 )THEN
+
+          BX(iLevel) = amrex_box( [ 1, 1, 1 ], &
+                                  [ 2**iLevel * nX(1), &
+                                    2**iLevel * nX(2), nX(3) ] )
+
+        ELSE
+
+          BX(iLevel) = amrex_box( [ 1, 1, 1 ], &
+                                  [ 2**iLevel * nX(1), &
+                                    2**iLevel * nX(2), &
+                                    2**iLevel * nX(3) ] )
+
+        END IF
+
+        CALL amrex_boxarray_build( BA(iLevel), BX(iLevel) )
 
         CALL BA(iLevel) % maxSize( MaxGridSizeX )
 
-      END DO
-
-      ALLOCATE( GEOM(0:nLevels-1) )
-
-      ALLOCATE( DM  (0:nLevels-1) )
-
-      DO iLevel = 0, nLevels-1
-
-        CALL amrex_geometry_build ( GEOM(iLevel), BX )
-
         CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
 
-      END DO
+        CALL amrex_geometry_build ( GEOM(iLevel), BX(iLevel) )
 
-      DO iLevel = 0, nLevels-1
+        ! --- Build MultiFabs ---
 
         CALL amrex_multifab_build &
                ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX )
@@ -282,14 +287,8 @@ CONTAINS
         dt_wrt / UnitsDisplay % TimeUnit, ' ', TRIM( UnitsDisplay  % TimeLabel )
       WRITE(*,'(4x,A24,ES10.3E2,A,A)') 'dt_chk  =', &
         dt_chk / UnitsDisplay % TimeUnit, ' ', TRIM( UnitsDisplay  % TimeLabel )
-      WRITE(*,'(4x,A24,I3.2)')         'nNodes  =', nNodes
-      WRITE(*,'(4x,A24,I3.2)')         'nStages =', nStages
-      WRITE(*,'(4x,A24,I3.2)')         'nDimsX  =', amrex_spacedim
-      WRITE(*,'(4x,A24,ES10.3E2)')     'Gamma   =', Gamma_IDEAL
       WRITE(*,'(5x,A24,A)')            'CoordinateSystem = ', CoordinateSystem
-      WRITE(*,'(4x,A24,3I7.6)')        'nX           =', nX
-      WRITE(*,'(4x,A24,3I7.6)')        'swX          =', swX
-      WRITE(*,'(4x,A24,3I7.6)')        'bcX          =', bcX
+      WRITE(*,'(4x,A24,I3.2)')         'nLevels      =', nLevels
       WRITE(*,'(4x,A24,3I7.6)')        'MaxGridSizeX =', MaxGridSizeX
 
       CALL DescribeProgramHeaderX
@@ -347,11 +346,11 @@ CONTAINS
 
     CALL SetUnitsGeometryFields
 
-    CALL DescribeFluidFields_Conserved( amrex_parallel_ioprocessor() )
+    CALL DescribeFluidFields_Conserved ( amrex_parallel_ioprocessor() )
 
-    CALL DescribeFluidFields_Primitive( amrex_parallel_ioprocessor() )
+    CALL DescribeFluidFields_Primitive ( amrex_parallel_ioprocessor() )
 
-    CALL DescribeFluidFields_Auxiliary( amrex_parallel_ioprocessor() )
+    CALL DescribeFluidFields_Auxiliary ( amrex_parallel_ioprocessor() )
 
     CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
 
@@ -402,6 +401,15 @@ CONTAINS
       CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
                Gamma_IDEAL_Option = Gamma_IDEAL )
+
+      IF( amrex_parallel_ioprocessor() )THEN
+
+        WRITE(*,*)
+        WRITE(*,'(4x,A)') 'INFO: Equation of State (IDEAL)'
+        WRITE(*,'(4x,A)') '-------------------------------'
+        WRITE(*,'(6x,A,ES10.3E2)') 'Gamma = ', Gamma_IDEAL
+
+      END IF
 
       CALL InitializePositivityLimiter_Euler &
              ( UsePositivityLimiter_Option = UsePositivityLimiter, &
@@ -468,6 +476,7 @@ CONTAINS
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
+stop 'InitializeProgram'
   END SUBROUTINE InitializeProgram
 
 

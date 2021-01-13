@@ -2,48 +2,50 @@ MODULE InputParsingModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,      ONLY: &
+  USE amrex_fort_module, ONLY: &
     AR => amrex_real, &
     amrex_spacedim
-  USE amrex_init_module,      ONLY: &
+  USE amrex_init_module, ONLY: &
     amrex_init, &
     amrex_initialized
-  USE amrex_parallel_module,  ONLY: &
+  USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor
-  USE amrex_amr_module,       ONLY: &
+  USE amrex_amr_module, ONLY: &
     amrex_amrcore_init, &
     amrex_amrcore_initialized
   USE amrex_parmparse_module, ONLY: &
-    amrex_parmparse,       &
+    amrex_parmparse, &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
-  USE amrex_boxarray_module,  ONLY: &
+  USE amrex_box_module, ONLY: &
+    amrex_box
+  USE amrex_boxarray_module, ONLY: &
     amrex_boxarray
   USE amrex_distromap_module, ONLY: &
     amrex_distromap
-  USE amrex_geometry_module,  ONLY: &
+  USE amrex_geometry_module, ONLY: &
     amrex_geometry
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,    ONLY: &
-    nDOFX,  &
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX, &
     nDimsX, &
     InitializeProgramHeader
-  USE FluidFieldsModule,      ONLY: &
+  USE FluidFieldsModule, ONLY: &
     nCF, &
     nPF, &
     nAF
-  USE GeometryFieldsModule,   ONLY: &
+  USE GeometryFieldsModule, ONLY: &
     nGF
-  USE UnitsModule,            ONLY: &
+  USE UnitsModule, ONLY: &
     ActivateUnitsDisplay, &
     DescribeUnitsDisplay, &
     UnitsDisplay
 
   ! --- Local Modules ---
 
-  USE MF_FieldsModule,        ONLY: &
+  USE MF_FieldsModule, ONLY: &
     CreateFields_MF, &
     DestroyFields_MF
 
@@ -94,6 +96,7 @@ MODULE InputParsingModule
   INTEGER                                    :: BlockingFactorX3
   INTEGER                                    :: MaxGridSizeX(3)
   INTEGER              , ALLOCATABLE, SAVE   :: StepNo(:)
+  TYPE(amrex_box)      , ALLOCATABLE, PUBLIC :: BX(:)
   TYPE(amrex_boxarray) , ALLOCATABLE, PUBLIC :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
   TYPE(amrex_geometry) , ALLOCATABLE, PUBLIC :: GEOM(:)
@@ -311,6 +314,7 @@ CONTAINS
     DEALLOCATE( GEOM )
     DEALLOCATE( DM   )
     DEALLOCATE( BA   )
+    DEALLOCATE( BX   )
 
     DEALLOCATE( t      )
     DEALLOCATE( dt     )

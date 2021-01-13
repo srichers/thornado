@@ -283,14 +283,18 @@ CONTAINS
 
         IF( iLevel .EQ. 0 )THEN
 
+print*,'CALL FillPatch_0'
           CALL FillPatch_0 &
                  ( t(iLevel), GEOM(iLevel), MF_U(iLevel), MF_uCF(iLevel) )
+print*,'CALLED FillPatch_0'
 
         ELSE
 
+print*,'CALL FillPatch'
           CALL FillPatch &
                  ( iLevel, t(iLevel), GEOM(iLevel-1), GEOM(iLevel), &
                    MF_U(iLevel), MF_uCF(iLevel-1), MF_uCF(iLevel) )
+print*,'CALLED FillPatch'
 
         END IF
 
@@ -467,16 +471,16 @@ CONTAINS
              pHi = UBOUND(p)
 
              CALL amrex_filcc &
-                    ( p, pLo, pHi, &
                         ! fortran array and bounds
-                      GEOM % DOMAIN % Lo, GEOM % DOMAIN % Hi, &
+                    ( p, pLo, pHi, &
                         ! index exten of whole problem domain
-                      GEOM % dx, &
+                      GEOM % DOMAIN % Lo, GEOM % DOMAIN % Hi, &
                         ! cell size in real
-                      GEOM % get_physical_location(pLo), &
+                      GEOM % dx, &
                         ! physical location of lower left corner
-                      lo_bc, hi_bc )
+                      GEOM % get_physical_location(pLo), &
                         ! bc types for each component
+                      lo_bc, hi_bc )
 
              ! amrex_filcc doesn't fill EXT_DIR
              ! (see amrex_bc_types_module for a list of bc types

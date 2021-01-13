@@ -401,17 +401,17 @@ CONTAINS
     uPF_K = Zero
     uAF_K = Zero
 
-    DO iDim = 1, 3
-
-      CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               xL(iDim), xR(iDim) )
-
-    END DO
-
     DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO iDim = 1, 3
+
+        CALL CreateMesh &
+               ( MeshX(iDim), 2**iLevel * nX(iDim), nNodesX(iDim), 0, &
+                 xL(iDim), xR(iDim) )
+
+      END DO
 
       DO WHILE( MFI % next() )
 
@@ -495,11 +495,11 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-    END DO
+      DO iDim = 1, 3
 
-    DO iDim = 1, 3
+        CALL DestroyMesh( MeshX(iDim) )
 
-      CALL DestroyMesh( MeshX(iDim) )
+      END DO
 
     END DO
 
@@ -886,14 +886,6 @@ CONTAINS
     uPF_K = Zero
     uAF_K = Zero
 
-    DO iDim = 1, 3
-
-      CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               xL(iDim), xR(iDim) )
-
-    END DO
-
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
@@ -1047,6 +1039,14 @@ CONTAINS
       WRITE(*,*)
 
     END IF
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
 
     DO iLevel = 0, nLevels-1
 

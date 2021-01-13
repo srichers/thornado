@@ -3,7 +3,7 @@
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
-DEBUG = 0
+DEBUG = 1
 
 thornado.ProgramName      = "Advection2D"
 thornado.AdvectionProfile = "SineWaveX1X2"
@@ -36,14 +36,15 @@ geometry.prob_hi   = 7.0710678118654757e-1 7.0710678118654757e-1 1.0
 
 amr.n_cell            = 64 64 01 # Number of cells in each dimension
 thornado.swX          = 01 01 00 # Stencil width (nGhostCells) in each dimension
-amr.max_grid_size_x   = 16
-amr.max_grid_size_y   = 16
-amr.blocking_factor_x = 1
-amr.blocking_factor_y = 1
-amr.max_level         = 0
+amr.max_grid_size_x   = 32
+amr.max_grid_size_y   = 32
+amr.blocking_factor_x = 8
+amr.blocking_factor_y = 8
+amr.ref_ratio         = 2
+amr.max_level         = 2
 
 # Slope limiter parameters
-SL.UseSlopeLimiter           = 1
+SL.UseSlopeLimiter           = 0
 SL.SlopeLimiterMethod        = "TVD"
 SL.BetaTVD                   = 1.75e+0
 SL.BetaTVB                   = 0.00e+0
@@ -54,7 +55,7 @@ SL.LimiterThresholdParameter = 3.00e-2
 SL.UseConservativeCorrection = 1
 
 # Positivity limiter parameters
-PL.UsePositivityLimiter = 1
+PL.UsePositivityLimiter = 0
 PL.Min_1                = 1.0e-13
 PL.Min_2                = 1.0e-13
 
