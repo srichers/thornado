@@ -81,7 +81,7 @@ module ThornadoInitializationModule
     DestroyRadiationFields
   use TwoMoment_ClosureModule, only: &
     InitializeClosure_TwoMoment
-  use TwoMoment_PositivityLimiterModule, only: &
+  use TwoMoment_PositivityLimiterModule_Old, only: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment
   use TwoMoment_MeshRefinementModule, only : &

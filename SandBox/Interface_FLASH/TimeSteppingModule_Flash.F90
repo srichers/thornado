@@ -24,7 +24,7 @@ MODULE TimeSteppingModule_Flash
     ComputeIncrement_TwoMoment_Explicit
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
     ComputeIncrement_TwoMoment_Implicit_New
-  USE TwoMoment_PositivityLimiterModule, ONLY: &
+  USE TwoMoment_PositivityLimiterModule_Old, ONLY: &
     ApplyPositivityLimiter_TwoMoment
 
   IMPLICIT NONE
