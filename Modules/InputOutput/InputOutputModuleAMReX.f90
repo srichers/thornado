@@ -413,7 +413,7 @@ CONTAINS
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
-      WRITE(*,'(A6,A,I8.8)') '', 'Writing PlotFile: ', StepNo
+      WRITE(*,'(6x,A,I8.8)') 'Writing PlotFile: ', StepNo(0)
 
     END IF
 
