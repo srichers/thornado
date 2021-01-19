@@ -63,12 +63,12 @@ aspect = 1.0
 # Specify colormap
 cmap = 'Purples'
 
+# Specify amr level (-1 for finest level)
+Level = -1
+
 # Specify whether or not to make a datafile and/or movie
 MakeDataFile = False
 MakeMovie    = False
-ID = '{:}_{:}_{:}'.format( ProblemName, PlotFileBaseName[4:], Field )
-DataFileName = '{:}_MovieData.dat'.format( ID )
-TimeFileName = '{:}_MovieTime.dat'.format( ID )
 
 #### ====== End of User Input =======
 
@@ -110,11 +110,17 @@ if ( File[-1] == '/' ): File = File[:-1]
 ds = yt.load( '{:}'.format( DataDirectory + File ) )
 
 print( 'Reading from file: {:}'.format( File ) )
-Level = ds.index.max_level
+
+if( Level == -1 ):
+  Level = ds.index.max_level
 Time  = ds.current_time
 nX    = ds.domain_dimensions
 xL    = ds.domain_left_edge
 xH    = ds.domain_right_edge
+
+ID = '{:}_{:}_{:}'.format( ProblemName, Field, Level )
+DataFileName = '{:}_MovieData.dat'.format( ID )
+TimeFileName = '{:}_MovieTime.dat'.format( ID )
 
 # Get dimensionality of problem
 if  ( nX[1] == 1 and nX[2] == 1 ):
@@ -484,7 +490,7 @@ elif( nDims == 2 ):
     slc.set_cmap( field = field, cmap = cmap )
 
     slc.set_log( field, UseLogScale )
-    #slc.set_zlim( field, 0.0, 2.0 ) # Set colorbar limits
+    #slc.set_zlim( field, 0.01, 50.0 ) # Set colorbar limits
     #slc.set_colorbar_label( field, 'Primitive Rest-Mass-Density' )
 
     slc.save( ProblemName + '_' + PlotFileBaseName + '_' + Field \
