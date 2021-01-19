@@ -120,6 +120,32 @@ CONTAINS
     END DO
     END DO
 
+    OPEN( 100, FILE = "/Users/dunhamsj/Desktop/ProjectionMatrix.txt" )
+
+    WRITE(100,'(I2.2)') nDOFX
+
+    DO iFine = 1, SIZE( ProjectionMatrix(1,1,:) )
+    DO i = 1, SIZE( ProjectionMatrix(:,1,1) )
+    DO k = 1, SIZE( ProjectionMatrix(1,:,1) )
+
+      WRITE(100,'(ES24.16E3)') ProjectionMatrix(i,k,iFine)
+
+    END DO
+    END DO
+    END DO
+
+    CLOSE( 100)
+
+    OPEN( 100, FILE = "/Users/dunhamsj/Desktop/WeightsX_q.txt" )
+
+      DO i = 1, nDOFX
+
+        WRITE(100,'(ES24.16E3)') WeightsX_q(i)
+
+      END DO
+
+    CLOSE( 100 )
+
     DEALLOCATE( xiX1 )
     DEALLOCATE( xiX2 )
     DEALLOCATE( xiX3 )
