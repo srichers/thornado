@@ -28,6 +28,7 @@ Euler_UtilitiesModule_Relativistic.o: \
   EquationOfStateModule.o \
   UnitsModule.o \
   TimersModule_Euler.o \
+  Euler_ErrorModule.o \
   Euler_UtilitiesModule_Relativistic.F90
 
 Euler_UtilitiesModule.o: \
