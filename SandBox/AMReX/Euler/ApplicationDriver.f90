@@ -69,7 +69,7 @@ PROGRAM ApplicationDriver
 
   INCLUDE 'mpif.h'
 
-  INTEGER  :: iErr
+  INTEGER  :: iErr, iLevel
   REAL(AR) :: Timer_Evolution
 
   CALL InitializeProgram
@@ -95,14 +95,20 @@ PROGRAM ApplicationDriver
 
     CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
 
+    DO iLevel = 0, nLevels-1
+
+      dt(iLevel) = MINVAL( dt )
+
+    END DO
+
     IF( ALL( t + dt .LE. t_end ) )THEN
 
       t = t + dt
 
     ELSE
 
-      dt = t_end - [t]
-      t  = [t_end]
+      dt = t_end - t
+      t  = t_end
 
     END IF
 
@@ -112,8 +118,8 @@ PROGRAM ApplicationDriver
 
       IF( MOD( StepNo(0), iCycleD ) .EQ. 0 )THEN
 
-        WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
-          'StepNo: ', StepNo(0), ' t = ', t / UnitsDisplay % TimeUnit, &
+        WRITE(*,'(8x,A,I8.8,A,ES13.6E3,1x,A,A,ES13.6E3,1x,A)') &
+          'StepNo: ', StepNo(0), ' t = ', t(0) / UnitsDisplay % TimeUnit, &
           TRIM( UnitsDisplay % TimeLabel ), &
           ' dt = ', dt(0) /  UnitsDisplay % TimeUnit, &
           TRIM( UnitsDisplay % TimeLabel )
@@ -155,17 +161,17 @@ PROGRAM ApplicationDriver
                MF_uGF % P, &
                MF_uCF % P )
 
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-
-      CALL FinalizeTimers_Euler &
-             ( Verbose_Option = amrex_parallel_ioprocessor(), &
-               SuppressApplicationDriver_Option = .TRUE., &
-               WriteAtIntermediateTime_Option = .FALSE. )
-
-      CALL FinalizeTimers_AMReX_Euler &
-             ( WriteAtIntermediateTime_Option = .FALSE. )
-
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+!!$      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+!!$
+!!$      CALL FinalizeTimers_Euler &
+!!$             ( Verbose_Option = amrex_parallel_ioprocessor(), &
+!!$               SuppressApplicationDriver_Option = .TRUE., &
+!!$               WriteAtIntermediateTime_Option = .FALSE. )
+!!$
+!!$      CALL FinalizeTimers_AMReX_Euler &
+!!$             ( WriteAtIntermediateTime_Option = .FALSE. )
+!!$
+!!$      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
       chk = .FALSE.
 
