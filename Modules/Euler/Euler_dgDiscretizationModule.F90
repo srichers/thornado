@@ -3777,6 +3777,10 @@ CONTAINS
 
       CALL TimersStop_Euler( Timer_Euler_Permute )
 
+    ELSE
+
+      dGdX2 = Zero
+
     END IF
 
     IF( nDimsX .GT. 2 )THEN
@@ -3857,6 +3861,10 @@ CONTAINS
       END DO
 
       CALL TimersStop_Euler( Timer_Euler_Permute )
+
+    ELSE
+
+      dGdX3 = Zero
 
     END IF
 
