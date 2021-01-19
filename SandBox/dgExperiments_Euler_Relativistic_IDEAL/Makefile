@@ -2,11 +2,14 @@ THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
-DEFINES += -DTHORNADO_DEBUG
+#DEFINES += -DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
 
-all: ApplicationDriver #ComputePrimitiveTest SlopeLimiterDiagnostics
+all: ApplicationDriver \
+     ComputePrimitiveTest \
+     SlopeLimiterDiagnostics \
+     WriteProjectionMatrix
 
 ApplicationDriver: \
 	$(thornado) \
@@ -38,6 +41,14 @@ SlopeLimiterDiagnostics: \
 	SlopeLimiterDiagnostics.o \
 	$(LIBRARIES)
 
+WriteProjectionMatrix: \
+	$(thornado) \
+	WriteProjectionMatrix.o
+	$(FLINKER) $(FLAGS) -o WriteProjectionMatrix_$(MACHINE) \
+	$(thornado) \
+	WriteProjectionMatrix.o \
+	$(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
@@ -45,4 +56,59 @@ clobber: clean
 	rm -f  ApplicationDriver_$(MACHINE)
 	rm -f  ComputePrimitiveTest_$(MACHINE)
 	rm -f  SlopeLimiterDiagnostics_$(MACHINE)
+	rm -f  WriteProjectionMatrix_$(MACHINE)
 	rm -rf *.dSYM
+
+ApplicationDriver.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  EquationOfStateModule.o \
+  ProgramHeaderModule.o \
+  GeometryComputationModule.o \
+  InitializationModule_Relativistic.o \
+  Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
+  Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  InputOutputModuleHDF.o \
+  FluidFieldsModule.o \
+  GeometryFieldsModule.o \
+  Euler_dgDiscretizationModule.o \
+  TimeSteppingModule_SSPRK.o \
+  UnitsModule.o \
+  Euler_TallyModule_Relativistic.o \
+  TimersModule_Euler.o \
+  Euler_ErrorModule.o \
+  ApplicationDriver.F90
+
+InitializationModule_Relativistic.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_IDEAL.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  UnitsModule.o \
+  QuadratureModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  InitializationModule_Relativistic.f90
+
+TimeSteppingModule_SSPRK.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
+  Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
+  TimersModule_Euler.o \
+  TimeSteppingModule_SSPRK.F90
+
+WriteProjectionMatrix.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  Euler_MeshRefinementModule.o \
+  WriteProjectionMatrix.f90
