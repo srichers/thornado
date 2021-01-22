@@ -318,10 +318,6 @@ CONTAINS
     REAL(DP) :: P_L, P_R, P_K
     REAL(DP) :: Cs_L, Cs_R
 
-    REAL(DP) :: prim          (nDOFX_X1,   nPF,iX_B0(1):iX_E0(1)+1, &
-                                            iX_B0(2):iX_E0(2), &
-                                            iX_B0(3):iX_E0(3))
-
     REAL(DP) :: G_K          (nDOFX,   nGF,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)-1:iX_E0(1)+1)
@@ -383,7 +379,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, dX2, dX3 ) &
-    !$ACC CREATE(     uCF_K, uCF_F_L, uCF_F_R, prim,&
+    !$ACC CREATE(     uCF_K, uCF_F_L, uCF_F_R, &
     !$ACC             uDF_K, uDF_F_L, uDF_F_R, &
     !$ACC             G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux )
 #endif
@@ -575,7 +571,7 @@ CONTAINS
     !$ACC          EigVals_L, EigVals_R, uCF_L, uCF_R, uPF_L, uPF_R, &
     !$ACC          Flux_X1_F, AlphaMns, AlphaPls, AlphaMdl ) &
     !$ACC PRESENT( iX_B0, iX_E0, dX2, dX3, uCF_F_L, uCF_F_R, uDF_F_L, uDF_F_R, &
-    !$ACC          NumericalFlux, G_F, WeightsX_X1,prim )
+    !$ACC          NumericalFlux, G_F, WeightsX_X1 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( Flux_X1_L, Flux_X1_R, P_L, P_R, Cs_L, Cs_R, &
@@ -605,19 +601,6 @@ CONTAINS
                G_F(iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
                G_F(iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
                iErr_Option = iErr )
-
-      CALL ComputePrimitive_Euler &
-             ( uCF_L(iCF_D ), uCF_L(iCF_S1), uCF_L(iCF_S2), &
-               uCF_L(iCF_S3), uCF_L(iCF_E ), uCF_L(iCF_Ne), &
-               prim(iNodeX_X1,iPF_D ,iX1,iX2,iX3), &
-               prim(iNodeX_X1,iPF_V1,iX1,iX2,iX3), &
-               prim(iNodeX_X1,iPF_V2,iX1,iX2,iX3), &
-               prim(iNodeX_X1,iPF_V3,iX1,iX2,iX3), &
-               prim(iNodeX_X1,iPF_E ,iX1,iX2,iX3), &
-               prim(iNodeX_X1,iPF_Ne,iX1,iX2,iX3), &
-               G_F(iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-               G_F(iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
-               G_F(iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1) )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), P_L  )
@@ -745,8 +728,6 @@ CONTAINS
     END DO
     END DO
     END DO
-!$ACC UPDATE HOST( prim )
-print*, 'Div: ', prim(1,iPF_V1,1,1,1)
 
     IF( iErr .NE. 0 )THEN
 
@@ -915,7 +896,7 @@ print*, 'Div: ', prim(1,iPF_V1,1,1,1)
     !$OMP               G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX2, dX3,prim, &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX2, dX3, &
     !$ACC               uCF_K, uCF_F_L, uCF_F_R, &
     !$ACC               uDF_K, uDF_F_L, uDF_F_R, &
     !$ACC               G_K, G_F, dU_X1, Flux_X1_q, NumericalFlux )
@@ -2155,68 +2136,127 @@ print*, 'Div: ', prim(1,iPF_V1,1,1,1)
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
-real(dp)::temp(ndofx,ix_b1(1):ix_e1(1),ix_b1(2):ix_e1(2),ix_b1(3):ix_b1(3),ncf)
+real(dp)::temp(ndofx,ix_b1(1):ix_e1(1),ix_b1(2):ix_e1(2),ix_b1(3):ix_e1(3),ncf)
+integer::ix1,ix2,ix3,inx
 
 #ifdef HYDRO_RELATIVISTIC
 
-! temp=du
-!     CALL ComputeIncrement_Geometry_Relativistic_CPU &
-!            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-! !!$ACC UPDATE HOST( dU )
-! OPEN(100,FILE='cc')
-! WRITE(100,*) dU
-! CLOSE(100)
-! 
-! OPEN(100,FILE='cc_D')
-! WRITE(100,*) dU(:,:,:,:,icf_D)
-! CLOSE(100)
-! 
-! OPEN(100,FILE='cc_S1')
-! WRITE(100,*) dU(:,:,:,:,icf_s1)
-! CLOSE(100)
-! 
-! OPEN(100,FILE='cc_E')
-! WRITE(100,*) dU(:,:,:,:,icf_E)
-! CLOSE(100)
-! 
-! du=temp
-!     CALL ComputeIncrement_Geometry_Relativistic_GPU &
-!            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-! !$ACC UPDATE HOST( dU )
-! OPEN(100,FILE='gc')
-! WRITE(100,*) dU
-! CLOSE(100)
-! 
-! OPEN(100,FILE='gc_D')
-! WRITE(100,*) dU(:,:,:,:,icf_D)
-! CLOSE(100)
-! 
-! OPEN(100,FILE='gc_S1')
-! WRITE(100,*) dU(:,:,:,:,icf_s1)
-! CLOSE(100)
-! 
-! OPEN(100,FILE='gc_E')
-! WRITE(100,*) dU(:,:,:,:,icf_E)
-! CLOSE(100)
+!!$temp=du
+!!$    CALL ComputeIncrement_Geometry_Relativistic_CPU &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+!!$OPEN(100,FILE='cc_D')
+!!$do ix3=ix_b1(3),ix_e1(3)
+!!$do ix2=ix_b1(3),ix_e1(3)
+!!$do ix1=ix_b1(3),ix_e1(3)
+!!$do inx=1,ndofx
+!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_D)
+!!$enddo
+!!$enddo
+!!$enddo
+!!$enddo
+!!$CLOSE(100)
+!!$
+!!$OPEN(100,FILE='cc_S1')
+!!$do ix3=ix_b1(3),ix_e1(3)
+!!$do ix2=ix_b1(3),ix_e1(3)
+!!$do ix1=ix_b1(3),ix_e1(3)
+!!$do inx=1,ndofx
+!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_S1)
+!!$enddo
+!!$enddo
+!!$enddo
+!!$enddo
+!!$CLOSE(100)
+!!$
+!!$OPEN(100,FILE='cc_E')
+!!$do ix3=ix_b1(3),ix_e1(3)
+!!$do ix2=ix_b1(3),ix_e1(3)
+!!$do ix1=ix_b1(3),ix_e1(3)
+!!$do inx=1,ndofx
+!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_E)
+!!$enddo
+!!$enddo
+!!$enddo
+!!$enddo
+!!$CLOSE(100)
+!!$
+!!$du=temp
+!!$    CALL ComputeIncrement_Geometry_Relativistic_GPU &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+!!$OPEN(100,FILE='gc_D')
+!!$do ix3=ix_b1(3),ix_e1(3)
+!!$do ix2=ix_b1(3),ix_e1(3)
+!!$do ix1=ix_b1(3),ix_e1(3)
+!!$do inx=1,ndofx
+!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_D)
+!!$enddo
+!!$enddo
+!!$enddo
+!!$enddo
+!!$CLOSE(100)
+!!$
+!!$OPEN(100,FILE='gc_S1')
+!!$do ix3=ix_b1(3),ix_e1(3)
+!!$do ix2=ix_b1(3),ix_e1(3)
+!!$do ix1=ix_b1(3),ix_e1(3)
+!!$do inx=1,ndofx
+!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_S1)
+!!$enddo
+!!$enddo
+!!$enddo
+!!$enddo
+!!$CLOSE(100)
+!!$
+!!$OPEN(100,FILE='gc_E')
+!!$do ix3=ix_b1(3),ix_e1(3)
+!!$do ix2=ix_b1(3),ix_e1(3)
+!!$do ix1=ix_b1(3),ix_e1(3)
+!!$do inx=1,ndofx
+!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_E)
+!!$enddo
+!!$enddo
+!!$enddo
+!!$enddo
+!!$CLOSE(100)
 
     CALL ComputeIncrement_Geometry_Relativistic_GPU &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-! !$ACC UPDATE HOST( dU )
-! OPEN(100,FILE='gg')
-! WRITE(100,*) dU
-! CLOSE(100)
-! 
-! OPEN(100,FILE='gg_D')
-! WRITE(100,*) dU(:,:,:,:,icf_D)
-! CLOSE(100)
-! 
-! OPEN(100,FILE='gg_S1')
-! WRITE(100,*) dU(:,:,:,:,icf_s1)
-! CLOSE(100)
-! 
-! OPEN(100,FILE='gg_E')
-! WRITE(100,*) dU(:,:,:,:,icf_E)
-! CLOSE(100)
+!!$!$ACC UPDATE HOST( dU )
+!!$OPEN(100,FILE='gg_D')
+!!$do ix3=ix_b1(3),ix_e1(3)
+!!$do ix2=ix_b1(3),ix_e1(3)
+!!$do ix1=ix_b1(3),ix_e1(3)
+!!$do inx=1,ndofx
+!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_D)
+!!$enddo
+!!$enddo
+!!$enddo
+!!$enddo
+!!$CLOSE(100)
+!!$
+!!$OPEN(100,FILE='gg_S1')
+!!$do ix3=ix_b1(3),ix_e1(3)
+!!$do ix2=ix_b1(3),ix_e1(3)
+!!$do ix1=ix_b1(3),ix_e1(3)
+!!$do inx=1,ndofx
+!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_S1)
+!!$enddo
+!!$enddo
+!!$enddo
+!!$enddo
+!!$CLOSE(100)
+!!$
+!!$OPEN(100,FILE='gg_E')
+!!$do ix3=ix_b1(3),ix_e1(3)
+!!$do ix2=ix_b1(3),ix_e1(3)
+!!$do ix1=ix_b1(3),ix_e1(3)
+!!$do inx=1,ndofx
+!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_E)
+!!$enddo
+!!$enddo
+!!$enddo
+!!$enddo
+!!$CLOSE(100)
 
 #else
 
@@ -2569,10 +2609,6 @@ real(dp)::temp(ndofx,ix_b1(1):ix_e1(1),ix_b1(2):ix_e1(2),ix_b1(3):ix_b1(3),ncf)
              G_K(:,iGF_Gm_dd_11), &
              G_K(:,iGF_Gm_dd_22), &
              G_K(:,iGF_Gm_dd_33) )
-
-if(ix1.eq.1)then
-print*, 'Geom: CPU: ', uPF_K(1,iPF_V1)
-endif
 
       CALL ComputePressureFromPrimitive &
              ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -3319,27 +3355,27 @@ endif
 
       ! Get gradient of conformal factor on upper face
 
-!!$      CALL InterpolateToFace &
-!!$             ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
-!!$               G_P_X1 (:,iGF_Psi), &
-!!$               G_K    (:,iGF_Psi), &
-!!$               G_N_X1 (:,iGF_Psi), &
-!!$               G_X1_Dn(:,iGF_Psi), &
-!!$               G_X1_Up(:,iGF_Psi) )
-!!$
-!!$      CALL ComputeDerivative &
-!!$             ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
-!!$               G_X1_Up(:,iGF_Psi), &
-!!$               G_X1_Dn(:,iGF_Psi), &
-!!$               G_K    (:,iGF_Psi), &
-!!$               GradPsi,            &
-!!$               Alpha_Option = One, Beta_Option = Zero )
-!!$
-!!$      GradPsiF = Zero
-!!$
-!!$      CALL DGEMV &
-!!$             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-!!$               GradPsi, 1, Zero, GradPsiF(1:nDOFX_X1), 1 )
+      CALL InterpolateToFace &
+             ( nDOFX_X1, LX_X1_Up, LX_X1_Dn, &
+               G_P_X1 (:,iGF_Psi), &
+               G_K    (:,iGF_Psi), &
+               G_N_X1 (:,iGF_Psi), &
+               G_X1_Dn(:,iGF_Psi), &
+               G_X1_Up(:,iGF_Psi) )
+
+      CALL ComputeDerivative &
+             ( nDOFX_X1, dX1, LX_X1_Up, LX_X1_Dn, dLXdX1_q, WeightsX_X1, &
+               G_X1_Up(:,iGF_Psi), &
+               G_X1_Dn(:,iGF_Psi), &
+               G_K    (:,iGF_Psi), &
+               GradPsi,            &
+               Alpha_Option = One, Beta_Option = Zero )
+
+      GradPsiF = Zero
+
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               GradPsi, 1, Zero, GradPsiF(1:nDOFX_X1), 1 )
 
       DO iDim = 1, 3
 
@@ -3380,8 +3416,8 @@ endif
                         + One / G_K(:,iGF_Gm_dd_33) * Christoffel_X1(:,3,1)**2 &
                         ) )
 
-!!$      EnergyDensitySourceTerms(7,:,iX1,iX2,iX3) &
-!!$        = GradPsiF
+      EnergyDensitySourceTerms(7,:,iX1,iX2,iX3) &
+        = GradPsiF
 
       ! --- Add to increments ---
 
@@ -3404,15 +3440,15 @@ endif
     END DO
     END DO
 
-!!$#ifndef USE_AMREX_TRUE
-!!$
-!!$    IF( WriteSourceTerms )THEN
-!!$
-!!$      CALL WriteSourceTermDiagnosticsHDF( Time, EnergyDensitySourceTerms )
-!!$
-!!$    END IF
-!!$
-!!$#endif
+#ifndef USE_AMREX_TRUE
+
+    IF( WriteSourceTerms )THEN
+
+      CALL WriteSourceTermDiagnosticsHDF( Time, EnergyDensitySourceTerms )
+
+    END IF
+
+#endif
 
   END SUBROUTINE ComputeIncrement_Geometry_Relativistic_CPU
 
@@ -3431,12 +3467,7 @@ endif
     INTEGER :: iX1, iX2, iX3, iNX, iCF, iGF, i, k, iDim
     INTEGER :: nK(3), nGF_K
 
-    REAL(DP) :: prim(nPF,nDOFX,iX_B0(1):iX_E0(1), &
-                               iX_B0(2):iX_E0(2), &
-                               iX_B0(3):iX_E0(3))
-
     REAL(DP) :: P(nPF)
-    REAL(DP) :: P1, P2, p3, p4, P5, p6
     REAL(DP) :: Pressure
     REAL(DP) :: PressureTensor(3,3, nDOFX,iX_B0(1):iX_E0(1), &
                                           iX_B0(2):iX_E0(2), &
@@ -3500,7 +3531,7 @@ endif
     REAL(DP) :: PressureTensor_ud(3,3)
     REAL(DP) :: Xij              (3,3)
     REAL(DP) :: DivGridVolume
-                                              
+
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
                dX3 => MeshX(3) % Width )
@@ -3521,7 +3552,7 @@ endif
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, dX1, dX2, dX3 ) &
-    !$ACC CREATE(     PressureTensor, PressureTensorTrace, prim,&
+    !$ACC CREATE(     PressureTensor, PressureTensorTrace, &
     !$ACC             G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
     !$ACC             G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
     !$ACC             G_K_X3, G_Dn_X3, G_Up_X3, dGdX3, &
@@ -4137,10 +4168,10 @@ endif
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( P, Pressure )
-#elif defined(THORNADO_OMP_OACC)
+#elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( P, Pressure ) &
-    !$ACC PRESENT( iX_B0, iX_E0, dU, U, G, prim,&
+    !$ACC PRESENT( iX_B0, iX_E0, dU, U, G, &
     !$ACC          PressureTensor, PressureTensorTrace, &
     !$ACC          dGdX1, dGdX2, dGdX3, EnergyDensitySourceTerms, iErr )
 #elif defined(THORNADO_OMP)
@@ -4151,23 +4182,6 @@ endif
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
-
-      CALL ComputePrimitive_Euler &
-             ( U(iNX,iX1,iX2,iX3,iCF_D ), &
-               U(iNX,iX1,iX2,iX3,iCF_S1), &
-               U(iNX,iX1,iX2,iX3,iCF_S2), &
-               U(iNX,iX1,iX2,iX3,iCF_S3), &
-               U(iNX,iX1,iX2,iX3,iCF_E ), &
-               U(iNX,iX1,iX2,iX3,iCF_Ne), &
-               prim(iPF_D ,iNX,iX1,iX2,iX3), & 
-               prim(iPF_V1,iNX,iX1,iX2,iX3), &
-               prim(iPF_V2,iNX,iX1,iX2,iX3), &
-               prim(iPF_V3,iNX,iX1,iX2,iX3), &
-               prim(iPF_E ,iNX,iX1,iX2,iX3), &
-               prim(iPF_Ne,iNX,iX1,iX2,iX3), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
       CALL ComputePrimitive_Euler &
              ( U(iNX,iX1,iX2,iX3,iCF_D ), &
@@ -4285,7 +4299,7 @@ endif
                   * dGdX2(iNX,iGF_Beta_3,iX1,iX3,iX2) &
               - ( U(iNX,iX1,iX2,iX3,iCF_D) + U(iNX,iX1,iX2,iX3,iCF_E) ) &
                   * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
-  
+
         EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
           = EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
               -U(iNX,iX1,iX2,iX3,iCF_S2) &
@@ -4318,7 +4332,7 @@ endif
                   * dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) &
               - ( U(iNX,iX1,iX2,iX3,iCF_D) + U(iNX,iX1,iX2,iX3,iCF_E) ) &
                   * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
-  
+
           EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
             = EnergyDensitySourceTerms(1,iNX,iX1,iX2,iX3) &
                 -U(iNX,iX1,iX2,iX3,iCF_S3) &
@@ -4335,8 +4349,8 @@ endif
     END DO
     END DO
     END DO
-!$ACC UPDATE HOST( prim )
-print*,'Geom, GPU: ', prim(iPF_V1,1,1,1,1)
+
+#ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
     ! --- Contributions from time-dependent metric ---
 
@@ -4345,14 +4359,14 @@ print*,'Geom, GPU: ', prim(iPF_V1,1,1,1,1)
     !$OMP PRIVATE( Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
     !$OMP          Christoffel_X1  , Christoffel_X2  , Christoffel_X3  , &
     !$OMP          Xij, PressureTensor_ud, DivGridVolume )
-#elif defined(THORNADO_OMP_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
     !$ACC          Christoffel_X1  , Christoffel_X2  , Christoffel_X3  , &
     !$ACC          Xij, PressureTensor_ud, DivGridVolume ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU, U, G, dGdX1, dGdX2, dGdX3, &
     !$ACC          EnergyDensitySourceTerms, &
-    !$ACC          PressureTensor, PressureTensorTrace ) &
+    !$ACC          PressureTensor, PressureTensorTrace )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
@@ -4661,6 +4675,8 @@ print*,'Geom, GPU: ', prim(iPF_V1,1,1,1,1)
     END DO
     END DO
 
+#endif
+
     CALL TimersStart_Euler( Timer_Euler_CopyOut )
 
 #if defined(THORNADO_OMP_OL)
@@ -4674,7 +4690,7 @@ print*,'Geom, GPU: ', prim(iPF_V1,1,1,1,1)
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      EnergyDensitySourceTerms, iErr ) &
-    !$ACC DELETE(       iX_B0, iX_E0, dX1, dX2, dX3, prim,&
+    !$ACC DELETE(       iX_B0, iX_E0, dX1, dX2, dX3, &
     !$ACC               PressureTensor, PressureTensorTrace, &
     !$ACC               G_K_X1, G_Dn_X1, G_Up_X1, dGdX1, &
     !$ACC               G_K_X2, G_Dn_X2, G_Up_X2, dGdX2, &
@@ -4708,15 +4724,15 @@ print*,'Geom, GPU: ', prim(iPF_V1,1,1,1,1)
 
     END IF
 
-!!$#ifndef USE_AMREX_TRUE
-!!$
-!!$    IF( WriteSourceTerms )THEN
-!!$
-!!$      CALL WriteSourceTermDiagnosticsHDF( Time, EnergyDensitySourceTerms )
-!!$
-!!$    END IF
-!!$
-!!$#endif
+#ifndef USE_AMREX_TRUE
+
+    IF( WriteSourceTerms )THEN
+
+      CALL WriteSourceTermDiagnosticsHDF( Time, EnergyDensitySourceTerms )
+
+    END IF
+
+#endif
 
   END SUBROUTINE ComputeIncrement_Geometry_Relativistic_GPU
 

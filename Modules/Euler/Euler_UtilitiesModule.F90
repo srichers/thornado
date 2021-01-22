@@ -70,16 +70,6 @@ CONTAINS
     IF( PRESENT( iErr_Option ) ) &
       iErr = iErr_Option
 
-pf_d=1.0
-pf_v1=0.1
-pf_v2=0.0
-pf_v3=0.0
-pf_e=1.0
-pf_ne=0.0
-IF( PRESENT( iErr_Option ) ) &
-  iErr_Option = 0
-return
-
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputePrimitive_Euler_Relativistic &
