@@ -57,8 +57,6 @@ MODULE Euler_UtilitiesModule_Relativistic
     Timer_Euler_ComputeTimeStep, &
     Timer_Euler_CopyIn, &
     Timer_Euler_CopyOut
-  USE Euler_ErrorModule, ONLY: &
-    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -174,30 +172,30 @@ CONTAINS
     INTEGER,  INTENT(inout), OPTIONAL :: &
       iErr_Option
 
-    INTEGER :: iNX, iErr
+    INTEGER :: iNodeX, iErr
 
     iErr = 0
     IF( PRESENT( iErr_Option ) ) &
       iErr = iErr_Option
 
-    DO iNX = 1, SIZE( CF_D )
+    DO iNodeX = 1, SIZE( CF_D )
 
       CALL ComputePrimitive_Scalar &
-             ( CF_D   (iNX), &
-               CF_S1  (iNX), &
-               CF_S2  (iNX), &
-               CF_S3  (iNX), &
-               CF_E   (iNX), &
-               CF_Ne  (iNX), &
-               PF_D   (iNX), &
-               PF_V1  (iNX), &
-               PF_V2  (iNX), &
-               PF_V3  (iNX), &
-               PF_E   (iNX), &
-               PF_Ne  (iNX), &
-               GF_Gm11(iNX), &
-               GF_Gm22(iNX), &
-               GF_Gm33(iNX), &
+             ( CF_D   (iNodeX), &
+               CF_S1  (iNodeX), &
+               CF_S2  (iNodeX), &
+               CF_S3  (iNodeX), &
+               CF_E   (iNodeX), &
+               CF_Ne  (iNodeX), &
+               PF_D   (iNodeX), &
+               PF_V1  (iNodeX), &
+               PF_V2  (iNodeX), &
+               PF_V3  (iNodeX), &
+               PF_E   (iNodeX), &
+               PF_Ne  (iNodeX), &
+               GF_Gm11(iNodeX), &
+               GF_Gm22(iNodeX), &
+               GF_Gm33(iNodeX), &
                iErr_Option = iErr )
 
     END DO
@@ -250,27 +248,27 @@ CONTAINS
     REAL(DP), INTENT(out) :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
                              CF_E(:), CF_Ne(:)
 
-    INTEGER :: iNX
+    INTEGER :: iNodeX
 
-    DO iNX = 1, SIZE( PF_D )
+    DO iNodeX = 1, SIZE( PF_D )
 
       CALL ComputeConserved_Scalar &
-             ( PF_D (iNX), &
-               PF_V1(iNX), &
-               PF_V2(iNX), &
-               PF_V3(iNX), &
-               PF_E (iNX), &
-               PF_Ne(iNX), &
-               CF_D (iNX), &
-               CF_S1(iNX), &
-               CF_S2(iNX), &
-               CF_S3(iNX), &
-               CF_E (iNX), &
-               CF_Ne(iNX), &
-               Gm11 (iNX), &
-               Gm22 (iNX), &
-               Gm33 (iNX), &
-               AF_P (iNX) )
+             ( PF_D (iNodeX), &
+               PF_V1(iNodeX), &
+               PF_V2(iNodeX), &
+               PF_V3(iNodeX), &
+               PF_E (iNodeX), &
+               PF_Ne(iNodeX), &
+               CF_D (iNodeX), &
+               CF_S1(iNodeX), &
+               CF_S2(iNodeX), &
+               CF_S3(iNodeX), &
+               CF_E (iNodeX), &
+               CF_Ne(iNodeX), &
+               Gm11 (iNodeX), &
+               Gm22 (iNodeX), &
+               Gm33 (iNodeX), &
+               AF_P (iNodeX) )
 
     END DO
 
@@ -348,33 +346,34 @@ CONTAINS
   !> Loop over all the elements in the spatial domain and compute the minimum
   !> required time-step for numerical stability.
   SUBROUTINE ComputeTimeStep_Euler_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, iErr_Option )
 
-    INTEGER,        INTENT(in)  :: &
+    INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP),       INTENT(in)  :: &
+    REAL(DP), INTENT(in)  :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP),       INTENT(in)  :: &
+    REAL(DP), INTENT(in)  :: &
       CFL
-    REAL(DP),       INTENT(out) :: &
+    REAL(DP), INTENT(out) :: &
       TimeStep
+    INTEGER,  INTENT(inout), OPTIONAL :: &
+      iErr_Option
 
-    INTEGER  :: iX1, iX2, iX3, iNX, iDimX
+    INTEGER  :: iX1, iX2, iX3, iNodeX, iDimX, iErr
     REAL(DP) :: dX(3), dt
     REAL(DP) :: P(nPF), Cs, EigVals(nCF)
-    INTEGER :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3))
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width, &
         dX2 => MeshX(2) % Width, &
         dX3 => MeshX(3) % Width )
 
-    iErr = 0
-
     CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
+
+    iErr = 0
+    IF( PRESENT( iErr_Option ) ) &
+      iErr = iErr_Option
 
     CALL TimersStart_Euler( Timer_Euler_CopyIn )
 
@@ -383,7 +382,7 @@ CONTAINS
     !$OMP MAP( to: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(  G, U, iX_B0, iX_E0, dX1, dX2, dX3, iErr )
+    !$ACC COPYIN(  G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CopyIn )
@@ -397,7 +396,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( dX, dt, P, Cs, EigVals ) &
-    !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3, iErr ) &
+    !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
     !$ACC REDUCTION( MIN: TimeStep )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4) &
@@ -407,25 +406,25 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, nDOFX
+    DO iNodeX = 1, nDOFX
 
       dX(1) = dX1(iX1)
       dX(2) = dX2(iX2)
       dX(3) = dX3(iX3)
 
       CALL ComputePrimitive_Euler_Relativistic &
-             ( U(iNX,iX1,iX2,iX3,iCF_D ), &
-               U(iNX,iX1,iX2,iX3,iCF_S1), &
-               U(iNX,iX1,iX2,iX3,iCF_S2), &
-               U(iNX,iX1,iX2,iX3,iCF_S3), &
-               U(iNX,iX1,iX2,iX3,iCF_E ), &
-               U(iNX,iX1,iX2,iX3,iCF_Ne), &
+             ( U(iNodeX,iX1,iX2,iX3,iCF_D ), &
+               U(iNodeX,iX1,iX2,iX3,iCF_S1), &
+               U(iNodeX,iX1,iX2,iX3,iCF_S2), &
+               U(iNodeX,iX1,iX2,iX3,iCF_S3), &
+               U(iNodeX,iX1,iX2,iX3,iCF_E ), &
+               U(iNodeX,iX1,iX2,iX3,iCF_Ne), &
                P(iPF_D ), P(iPF_V1), P(iPF_V2), &
                P(iPF_V3), P(iPF_E ), P(iPF_Ne), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               iErr_Option = iErr(iNX,iX1,iX2,iX3) )
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               iErr_Option = iErr )
 
       CALL ComputeSoundSpeedFromPrimitive &
              ( P(iPF_D), P(iPF_E), P(iPF_Ne), Cs )
@@ -435,13 +434,13 @@ CONTAINS
         EigVals &
           = Eigenvalues_Euler_Relativistic &
               ( P(iPF_V1+(iDimX-1)), Cs, &
-                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11+(iDimX-1)), &
+                G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11+(iDimX-1)), &
                 P(iPF_V1), P(iPF_V2), P(iPF_V3), &
-                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                G(iNX,iX1,iX2,iX3,iGF_Alpha), &
-                G(iNX,iX1,iX2,iX3,iGF_Beta_1+(iDimX-1)) )
+                G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                G(iNodeX,iX1,iX2,iX3,iGF_Alpha), &
+                G(iNodeX,iX1,iX2,iX3,iGF_Beta_1+(iDimX-1)) )
 
         dt = dX(iDimX) / MAX( SqrtTiny, MAXVAL( ABS( EigVals ) ) )
 
@@ -453,32 +452,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: iErr )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC COPYOUT(   iErr )
-#endif
-
-    IF( ANY( iErr .NE. 0 ) )THEN
-
-      WRITE(*,*) 'ComputeTimeStep_Euler_Relativistic'
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1, nDOFX
-
-        CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
 
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
 
@@ -495,6 +468,9 @@ CONTAINS
     CALL TimersStop_Euler( Timer_Euler_CopyOut )
 
     END ASSOCIATE ! dX1, etc.
+
+    IF( PRESENT( iErr_Option ) ) &
+      iErr_Option = iErr
 
     CALL TimersStop_Euler( Timer_Euler_ComputeTimeStep )
 

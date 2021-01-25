@@ -46,21 +46,8 @@ MODULE Euler_BoundaryConditionsModule
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Outer = 2
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_None  = 3
 
-  REAL(DP), PUBLIC :: ExpD = Three
-  REAL(DP), PUBLIC :: ExpE = Four
-
-#if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET &
-  !$OMP ( iApplyBC_Euler_Both, iApplyBC_Euler_Inner, &
-  !$OMP   iApplyBC_Euler_Outer, iApplyBC_Euler_None, &
-  !$OMP   ExpD, ExpE )
-#elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE &
-  !$ACC ( iApplyBC_Euler_Both, iApplyBC_Euler_Inner, &
-  !$ACC   iApplyBC_Euler_Outer, iApplyBC_Euler_None, &
-  !$ACC   ExpD, ExpE )
-#endif
-
+  REAL(DP), PARAMETER, PUBLIC :: ExpD = Three
+  REAL(DP), PARAMETER, PUBLIC :: ExpE = Four
 
 CONTAINS
 
@@ -516,7 +503,7 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+        !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
@@ -673,7 +660,7 @@ CONTAINS
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
         !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+        !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
         DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)

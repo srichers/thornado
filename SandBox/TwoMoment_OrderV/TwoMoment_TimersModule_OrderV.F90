@@ -3,7 +3,7 @@ MODULE TwoMoment_TimersModule_OrderV
   USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: &
     I8 => INT64
   USE KindModule, Only: &
-    DP, Zero
+    DP, Zero, SqrtTiny
 
   IMPLICIT NONE
   PRIVATE
@@ -26,9 +26,13 @@ MODULE TwoMoment_TimersModule_OrderV
   REAL(DP), PUBLIC :: Timer_Streaming_NumericalFlux
   REAL(DP), PUBLIC :: Timer_Streaming_Sources
   REAL(DP), PUBLIC :: Timer_Collisions
+  REAL(DP), PUBLIC :: Timer_Collisions_Permute
+  REAL(DP), PUBLIC :: Timer_Collisions_PrimitiveFluid
+  REAL(DP), PUBLIC :: Timer_Collisions_Solve
   REAL(DP), PUBLIC :: Timer_TCI
   REAL(DP), PUBLIC :: Timer_SlopeLimiter
   REAL(DP), PUBLIC :: Timer_PositivityLimiter
+  REAL(DP), PUBLIC :: Timer_TimeStepper
 
   PUBLIC :: InitializeTimers
   PUBLIC :: FinalizeTimers
@@ -60,12 +64,17 @@ CONTAINS
     Timer_Streaming_Sources             = Zero
 
     Timer_Collisions                    = Zero
+    Timer_Collisions_Permute            = Zero
+    Timer_Collisions_PrimitiveFluid     = Zero
+    Timer_Collisions_Solve              = Zero
 
     Timer_TCI                           = Zero
 
     Timer_SlopeLimiter                  = Zero
 
     Timer_PositivityLimiter             = Zero
+
+    Timer_TimeStepper                   = Zero
 
     CALL TimersStart( Timer_Total )
 
@@ -86,25 +95,25 @@ CONTAINS
       '  Timer_Streaming                        :', Timer_Streaming                     , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A,ES12.6E2)') &
       '    Timer_Streaming_BCs                  :', Timer_Streaming_BCs                 , ' s ', &
-      Timer_Streaming_BCs / Timer_Streaming
+      Timer_Streaming_BCs / MAX( Timer_Streaming, SqrtTiny )
     WRITE(*,'(7X,A,5X,ES12.6E2,A,ES12.6E2)') &
       '    Timer_Streaming_Zero                 :', Timer_Streaming_Zero                , ' s ', &
-      Timer_Streaming_Zero / Timer_Streaming
+      Timer_Streaming_Zero / MAX( Timer_Streaming, SqrtTiny )
     WRITE(*,'(7X,A,5X,ES12.6E2,A,ES12.6E2)') &
       '    Timer_Streaming_Divergence_X1        :', Timer_Streaming_Divergence_X1       , ' s ', &
-      Timer_Streaming_Divergence_X1 / Timer_Streaming
+      Timer_Streaming_Divergence_X1 / MAX( Timer_Streaming, SqrtTiny )
     WRITE(*,'(7X,A,5X,ES12.6E2,A,ES12.6E2)') &
       '    Timer_Streaming_Divergence_X2        :', Timer_Streaming_Divergence_X2       , ' s ', &
-      Timer_Streaming_Divergence_X2 / Timer_Streaming
+      Timer_Streaming_Divergence_X2 / MAX( Timer_Streaming, SqrtTiny )
     WRITE(*,'(7X,A,5X,ES12.6E2,A,ES12.6E2)') &
       '    Timer_Streaming_Divergence_X3        :', Timer_Streaming_Divergence_X3       , ' s ', &
-      Timer_Streaming_Divergence_X3 / Timer_Streaming
+      Timer_Streaming_Divergence_X3 / MAX( Timer_Streaming, SqrtTiny )
     WRITE(*,'(7X,A,5X,ES12.6E2,A,ES12.6E2)') &
       '    Timer_Streaming_ObserverCorrections  :', Timer_Streaming_ObserverCorrections , ' s ', &
-      Timer_Streaming_ObserverCorrections / Timer_Streaming
+      Timer_Streaming_ObserverCorrections / MAX( Timer_Streaming, SqrtTiny )
     WRITE(*,'(7X,A,5X,ES12.6E2,A,ES12.6E2)') &
       '    Timer_Streaming_InverseMassMatrix    :', Timer_Streaming_InverseMassMatrix   , ' s ', &
-      Timer_Streaming_InverseMassMatrix / Timer_Streaming
+      Timer_Streaming_InverseMassMatrix / MAX( Timer_Streaming, SqrtTiny )
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Streaming_Derivatives_X1       :', Timer_Streaming_Derivatives_X1      , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
@@ -122,11 +131,19 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_Collisions                       :', Timer_Collisions                    , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_Collisions_Permute               :', Timer_Collisions_Permute            , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_Collisions_PrimitiveFluid        :', Timer_Collisions_PrimitiveFluid     , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_Collisions_Solve                 :', Timer_Collisions_Solve              , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_TCI                              :', Timer_TCI                           , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_SlopeLimiter                     :', Timer_SlopeLimiter                  , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_PositivityLimiter                :', Timer_PositivityLimiter             , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '  Timer_TimeStepper                      :', Timer_TimeStepper                   , ' s'
 
     WRITE(*,*)
 
