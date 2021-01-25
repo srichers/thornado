@@ -58,6 +58,8 @@ MODULE Euler_DiscontinuityDetectionModule
     TimersStop_Euler, &
     Timer_Euler_TroubledCellIndicator, &
     Timer_Euler_ShockDetector
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -365,6 +367,17 @@ CONTAINS
     REAL(DP) :: P_K(2), VX_K(2)
     REAL(DP) :: GradP, DivV
 
+    INTEGER :: iErr1(iX_B0(1):iX_E0(1), &
+                     iX_B0(2):iX_E0(2), &
+                     iX_B0(3):iX_E0(3))
+
+    INTEGER :: iErr2(iX_B0(1):iX_E0(1), &
+                     iX_B0(2):iX_E0(2), &
+                     iX_B0(3):iX_E0(3))
+
+    iErr1 = 0
+    iErr2 = 0
+
     ! --- Shock detector, adapted from
     !     Fryxell et al., (2000), ApJS, 131, 273 ---
 
@@ -417,7 +430,8 @@ CONTAINS
              uPF_K(iPF_Ne), &
              uGF_K(iGF_Gm_dd_11), &
              uGF_K(iGF_Gm_dd_22), &
-             uGF_K(iGF_Gm_dd_33) )
+             uGF_K(iGF_Gm_dd_33), &
+             iErr1(iX1,iX2,iX3) )
 
       VX_K(1) = uGF_K(iGF_Alpha) * uPF_K(iPF_V1) + uGF_K(iGF_Beta_1)
 
@@ -463,7 +477,8 @@ CONTAINS
              uPF_K(iPF_Ne), &
              uGF_K(iGF_Gm_dd_11), &
              uGF_K(iGF_Gm_dd_22), &
-             uGF_K(iGF_Gm_dd_33) )
+             uGF_K(iGF_Gm_dd_33), &
+             iErr2(iX1,iX2,iX3) )
 
       VX_K(2) = uGF_K(iGF_Alpha) * uPF_K(iPF_V1) + uGF_K(iGF_Beta_1)
 
@@ -692,6 +707,34 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    IF( ANY( iErr1 .NE. 0 ) .OR. ANY( iErr2 .NE. 0 ) )THEN
+
+      PRINT*, 'Shock Detector'
+
+      PRINT*, '1'
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        CALL DescribeError_Euler( iErr1(iX1,iX2,iX3) )
+
+      END DO
+      END DO
+      END DO
+
+      PRINT*, '2'
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        CALL DescribeError_Euler( iErr2(iX1,iX2,iX3) )
+
+      END DO
+      END DO
+      END DO
+
+    END IF
 
     CALL TimersStop_Euler( Timer_Euler_ShockDetector )
 

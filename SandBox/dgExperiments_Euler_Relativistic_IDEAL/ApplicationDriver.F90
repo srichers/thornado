@@ -71,8 +71,6 @@ PROGRAM ApplicationDriver
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
-  USE Euler_ErrorModule, ONLY: &
-    DescribeError_Euler
 
   IMPLICIT NONE
 
@@ -93,7 +91,6 @@ PROGRAM ApplicationDriver
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
   INTEGER       :: RestartFileNumber
-  INTEGER       :: iErr = 0
   REAL(DP)      :: SlopeTolerance
   REAL(DP)      :: Min_1, Min_2
   REAL(DP)      :: xL(3), xR(3), Gamma
@@ -423,6 +420,8 @@ PROGRAM ApplicationDriver
            nDetCells_Option = nDetCells, &
            Eblast_Option    = Eblast )
 
+  uDF = 0.0_DP
+
   IF( RestartFileNumber .LT. 0 )THEN
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
@@ -432,10 +431,7 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
     CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, &
-             iErr_Option = iErr )
-
-    CALL DescribeError_Euler( iErr )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -448,9 +444,9 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  iCycleD = 10
-!!$  iCycleW = 1; dt_wrt = -1.0_DP
-  dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
+  iCycleD = 1
+  iCycleW = 1; dt_wrt = -1.0_DP
+!!$  dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -478,9 +474,7 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF, uCF, &
              CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             dt, iErr_Option = iErr )
-
-    CALL DescribeError_Euler( iErr )
+             dt )
 
     IF( t + dt .LT. t_end )THEN
 
@@ -528,10 +522,7 @@ PROGRAM ApplicationDriver
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
 
       CALL ComputeFromConserved_Euler_Relativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, &
-               iErr_Option = iErr )
-
-      CALL DescribeError_Euler( iErr )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -544,7 +535,7 @@ PROGRAM ApplicationDriver
       CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     END IF
-
+exit
   END DO
 
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
@@ -555,10 +546,7 @@ PROGRAM ApplicationDriver
   CALL TimersStart_Euler( Timer_Euler_Finalize )
 
   CALL ComputeFromConserved_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, &
-           iErr_Option = iErr )
-
-  CALL DescribeError_Euler( iErr )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -586,21 +574,21 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeTimers_Euler
 
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git info'
-  WRITE(*,'(2x,A)') '--------'
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git branch:'
-  CALL EXECUTE_COMMAND_LINE( 'git branch' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git describe --tags:'
-  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
-  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'date:'
-  CALL EXECUTE_COMMAND_LINE( 'date' )
-  WRITE(*,*)
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git info'
+!!$  WRITE(*,'(2x,A)') '--------'
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git branch:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git describe --tags:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'date:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'date' )
+!!$  WRITE(*,*)
 
 END PROGRAM ApplicationDriver

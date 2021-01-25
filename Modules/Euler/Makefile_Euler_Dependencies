@@ -28,6 +28,7 @@ Euler_UtilitiesModule_Relativistic.o: \
   EquationOfStateModule.o \
   UnitsModule.o \
   TimersModule_Euler.o \
+  Euler_ErrorModule.o \
   Euler_UtilitiesModule_Relativistic.F90
 
 Euler_UtilitiesModule.o: \
@@ -153,6 +154,7 @@ Euler_DiscontinuityDetectionModule.o: \
   Euler_UtilitiesModule.o \
   EquationOfStateModule.o \
   TimersModule_Euler.o \
+  Euler_ErrorModule.o \
   Euler_DiscontinuityDetectionModule.F90
 
 Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \

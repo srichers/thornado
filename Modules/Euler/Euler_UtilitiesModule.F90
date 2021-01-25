@@ -106,9 +106,9 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
     INTEGER,  INTENT(inout), OPTIONAL :: &
-      iErr_Option
+      iErr_Option(:)
 
-    INTEGER :: iErr
+    INTEGER :: iErr(SIZE(CF_D))
 
     iErr = 0
     IF( PRESENT( iErr_Option ) ) &

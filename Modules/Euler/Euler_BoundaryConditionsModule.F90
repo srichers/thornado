@@ -49,17 +49,17 @@ MODULE Euler_BoundaryConditionsModule
   REAL(DP), PUBLIC :: ExpD = Three
   REAL(DP), PUBLIC :: ExpE = Four
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET &
-  !$OMP ( iApplyBC_Euler_Both, iApplyBC_Euler_Inner, &
-  !$OMP   iApplyBC_Euler_Outer, iApplyBC_Euler_None, &
-  !$OMP   ExpD, ExpE )
-#elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE &
-  !$ACC ( iApplyBC_Euler_Both, iApplyBC_Euler_Inner, &
-  !$ACC   iApplyBC_Euler_Outer, iApplyBC_Euler_None, &
-  !$ACC   ExpD, ExpE )
-#endif
+!!  #if defined(THORNADO_OMP_OL)
+!!    !$OMP DECLARE TARGET &
+!!    !$OMP ( iApplyBC_Euler_Both, iApplyBC_Euler_Inner, &
+!!    !$OMP   iApplyBC_Euler_Outer, iApplyBC_Euler_None, &
+!!    !$OMP   ExpD, ExpE )
+!!  #elif defined(THORNADO_OACC)
+!!    !$ACC DECLARE CREATE &
+!!    !$ACC ( iApplyBC_Euler_Both, iApplyBC_Euler_Inner, &
+!!    !$ACC   iApplyBC_Euler_Outer, iApplyBC_Euler_None, &
+!!    !$ACC   ExpD, ExpE )
+!!  #endif
 
 
 CONTAINS
@@ -125,7 +125,7 @@ CONTAINS
     !$OMP MAP( to: U, iX_B0, iX_E0, iX_B1, iX_E1, iApplyBC )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( U, iX_B0, iX_E0, iX_B1, iX_E1, iApplyBC )
+    !$ACC COPYIN(  U, iX_B0, iX_E0, iX_B1, iX_E1, iApplyBC )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CopyIn )
@@ -144,13 +144,19 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: U ) &
+    !$OMP MAP( from:    U ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iApplyBC )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( U ) &
-    !$ACC DELETE( iX_B0, iX_E0, iX_B1, iX_E1, iApplyBC )
+    !$ACC COPYOUT(      U ) &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iApplyBC )
 #endif
+print*,'Boundary conditions'
+print*,'ix_b0: ', U(1,ix_b0(1),1,1,1)
+print*,'ix_b1: ', U(1,ix_b1(1),1,1,1)
+print*,'ix_e0: ', U(1,ix_e0(1),1,1,1)
+print*,'ix_e1: ', U(1,ix_e1(1),1,1,1)
+stop
 
     CALL TimersStop_Euler( Timer_Euler_CopyOut )
 
