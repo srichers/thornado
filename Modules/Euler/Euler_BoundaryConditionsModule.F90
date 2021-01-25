@@ -49,6 +49,20 @@ MODULE Euler_BoundaryConditionsModule
   REAL(DP), PUBLIC :: ExpD = Three
   REAL(DP), PUBLIC :: ExpE = Four
 
+! #if defined(THORNADO_OMP_OL)
+!   !$OMP DECLARE TARGET( ExpD, ExpE )
+! #elif defined(THORNADO_OACC)
+!   !$ACC DECLARE CREATE( ExpD, ExpE )
+! #endif
+!
+! #if defined(THORNADO_OMP_OL)
+!     !$OMP TARGET UPDATE &
+!     !$OMP TO(     ExpD, ExpE )
+! #elif defined(THORNADO_OACC)
+!     !$ACC UPDATE &
+!     !$ACC DEVICE( ExpD, ExpE )
+! #endif
+
 CONTAINS
 
 
