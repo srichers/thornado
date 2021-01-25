@@ -46,8 +46,8 @@ MODULE Euler_BoundaryConditionsModule
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Outer = 2
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_None  = 3
 
-  REAL(DP), PARAMETER, PUBLIC :: ExpD = Three
-  REAL(DP), PARAMETER, PUBLIC :: ExpE = Four
+  REAL(DP), PUBLIC :: ExpD = Three
+  REAL(DP), PUBLIC :: ExpE = Four
 
 CONTAINS
 
