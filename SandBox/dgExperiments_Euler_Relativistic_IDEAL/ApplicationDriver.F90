@@ -412,6 +412,10 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
+  ! OMP doesn't like NANs
+  uCF = 0.0_DP ! Without this, crashes when copying data in TimeStepper
+  uDF = 0.0_DP ! Without this, crashes in IO
+
   CALL InitializeFields_Relativistic &
          ( AdvectionProfile_Option &
              = TRIM( AdvectionProfile ), &
@@ -419,8 +423,6 @@ PROGRAM ApplicationDriver
              = TRIM( RiemannProblemName ), &
            nDetCells_Option = nDetCells, &
            Eblast_Option    = Eblast )
-
-  uDF = 0.0_DP
 
   IF( RestartFileNumber .LT. 0 )THEN
 
