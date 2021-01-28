@@ -151,12 +151,6 @@ CONTAINS
     !$ACC COPYOUT(      U ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iApplyBC )
 #endif
-print*,'Boundary conditions'
-print*,'ix_b0: ', U(1,ix_b0(1),1,1,1)
-print*,'ix_b1: ', U(1,ix_b1(1),1,1,1)
-print*,'ix_e0: ', U(1,ix_e0(1),1,1,1)
-print*,'ix_e1: ', U(1,ix_e1(1),1,1,1)
-stop
 
     CALL TimersStop_Euler( Timer_Euler_CopyOut )
 
