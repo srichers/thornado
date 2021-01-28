@@ -70,12 +70,12 @@ MODULE OpacityModule_TABLE
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
-  !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+  !$OMP ( Es_T, LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
   !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
   !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
-  !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+  !$ACC ( Es_T, LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
   !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
 #endif
@@ -306,13 +306,13 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP MAP( to: Es_T, LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
     !$OMP          EmAb_T, Iso_T, NES_T, Pair_T ) &
     !$OMP MAP( alloc: NES_AT, Pair_AT )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
-    !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$ACC ( Es_T, LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
     !$ACC   EmAb_T, Iso_T, NES_T, Pair_T )
 #endif
@@ -321,10 +321,10 @@ CONTAINS
                 WidthE  => MeshE % Width, &
                 NodesE  => MeshE % Nodes )
 
-    ASSOCIATE ( nSpecies   => OPACITIES % Scat_NES % nOpacities, &
-                nMoments   => OPACITIES % Scat_NES % nMoments, &
-                nPointsEta => OPACITIES % Scat_NES % nPoints(5), &
-                nPointsT   => OPACITIES % Scat_NES % nPoints(4) )
+!    ASSOCIATE ( nSpecies   => OPACITIES % Scat_NES % nOpacities, &
+!                nMoments   => OPACITIES % Scat_NES % nMoments, &
+!                nPointsEta => OPACITIES % Scat_NES % nPoints(5), &
+!                nPointsT   => OPACITIES % Scat_NES % nPoints(4) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -335,10 +335,10 @@ CONTAINS
     !$ACC COPYIN( CenterE, WidthE, NodesE ) &
     !$ACC PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, nSpecies
-      DO iM = 1, nMoments
-        DO iEta = 1, nPointsEta
-          DO iT = 1, nPointsT
+    DO iS = 1, OPACITIES % Scat_NES % nOpacities
+      DO iM = 1, OPACITIES % Scat_NES % nMoments
+        DO iEta = 1, OPACITIES % Scat_NES % nPoints(5)
+          DO iT = 1, OPACITIES % Scat_NES % nPoints(4)
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -365,12 +365,12 @@ CONTAINS
       END DO
     END DO
 
-    END ASSOCIATE
+!    END ASSOCIATE
 
-    ASSOCIATE ( nSpecies   => OPACITIES % Scat_Pair % nOpacities, &
-                nMoments   => OPACITIES % Scat_Pair % nMoments, &
-                nPointsEta => OPACITIES % Scat_Pair % nPoints(5), &
-                nPointsT   => OPACITIES % Scat_Pair % nPoints(4) )
+!    ASSOCIATE ( nSpecies   => OPACITIES % Scat_Pair % nOpacities, &
+!                nMoments   => OPACITIES % Scat_Pair % nMoments, &
+!                nPointsEta => OPACITIES % Scat_Pair % nPoints(5), &
+!                nPointsT   => OPACITIES % Scat_Pair % nPoints(4) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -381,10 +381,10 @@ CONTAINS
     !$ACC COPYIN( CenterE, WidthE, NodesE ) &
     !$ACC PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, nSpecies
-      DO iM = 1, nMoments
-        DO iEta = 1, nPointsEta
-          DO iT = 1, nPointsT
+    DO iS = 1, OPACITIES % Scat_Pair % nOpacities
+      DO iM = 1, OPACITIES % Scat_Pair % nMoments
+        DO iEta = 1, OPACITIES % Scat_Pair % nPoints(5)
+          DO iT = 1, OPACITIES % Scat_Pair % nPoints(4)
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -411,7 +411,7 @@ CONTAINS
       END DO
     END DO
 
-    END ASSOCIATE
+!    END ASSOCIATE
 
     END ASSOCIATE
 
@@ -434,7 +434,7 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP MAP( release: Es_T, LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
     !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
 #endif

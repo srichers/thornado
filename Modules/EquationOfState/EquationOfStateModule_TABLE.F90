@@ -963,7 +963,7 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: T, Em, Y
 
-    INTEGER :: iP, nP, Error(SIZE(D))
+    INTEGER :: iP, nP, Error, MaxError
     LOGICAL :: do_gpu
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -989,15 +989,21 @@ CONTAINS
     END IF
 #endif
 
+    MaxError = 0
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP IF( do_gpu ) &
-    !$OMP MAP( from: Error )
+    !$OMP PRIVATE( Error ) &
+    !$OMP REDUCTION( max: MaxError ) &
+    !$OMP MAP( tofrom: MaxError )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC IF( do_gpu ) &
-    !$ACC PRESENT( D, Ev, Ne, T, Em, Y ) &
-    !$ACC COPYOUT( Error )
+    !$ACC PRIVATE( Error ) &
+    !$ACC REDUCTION( max: MaxError ) &
+    !$ACC COPY( MaxError ) &
+    !$ACC PRESENT( D, Ev, Ne, T, Em, Y )
 #endif
     DO iP = 1, nP
 
@@ -1005,14 +1011,14 @@ CONTAINS
       Y (iP) = Ne(iP) / D(iP) * BaryonMass ! --- Electron Fraction
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-             ( D(iP), Em(iP), Y(iP), T(iP), Error_Option = Error(iP) )
+             ( D(iP), Em(iP), Y(iP), T(iP), Error_Option = Error )
+
+      MaxError = MAX( Error, MaxError )
 
     END DO
 
-    IF ( ANY( Error(:) > 0 ) ) THEN
-      DO iP = 1, nP
-        IF ( Error(iP) > 0 ) CALL DescribeEOSInversionError( Error(iP) )
-      END DO
+    IF ( MaxError > 0 ) THEN
+      CALL DescribeEOSInversionError( MaxError )
       STOP
     END IF
 

@@ -144,6 +144,8 @@ MODULE NeutrinoOpacitiesComputationModule
   END INTERFACE
 
   INTERFACE FermiDirac
+    MODULE PROCEDURE FermiDirac0_Scalar
+    MODULE PROCEDURE FermiDirac0_Vector
     MODULE PROCEDURE FermiDirac_Scalar
     MODULE PROCEDURE FermiDirac_Vector
   END INTERFACE
@@ -157,6 +159,12 @@ MODULE NeutrinoOpacitiesComputationModule
     MODULE PROCEDURE dFermiDiracdY_Scalar
     MODULE PROCEDURE dFermiDiracdY_Vector
   END INTERFACE
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET( C1, C2 )
+#elif defined(THORNADO_OACC)
+  !$ACC DECARE CREATE( C1, C2 )
+#endif
 
 CONTAINS
 
@@ -520,7 +528,7 @@ CONTAINS
         ELSE IF ( iSpecies == iNuE_Bar ) THEN
           f0(iE,iX) = FermiDirac( E(iE), -Mnu, kT )
         ELSE
-          f0(iE,iX) = FermiDirac( E(iE), Zero, kT )
+          f0(iE,iX) = FermiDirac( E(iE), kT )
         END IF
 
       END DO
@@ -624,7 +632,7 @@ CONTAINS
         ELSE IF ( iS_1 == iNuE_Bar ) THEN
           f0_1(iE,iX) = FermiDirac( E(iE), -Mnu, kT )
         ELSE
-          f0_1(iE,iX) = FermiDirac( E(iE), Zero, kT )
+          f0_1(iE,iX) = FermiDirac( E(iE), kT )
         END IF
 
         IF ( iS_2 == iNuE ) THEN
@@ -632,7 +640,7 @@ CONTAINS
         ELSE IF ( iS_2 == iNuE_Bar ) THEN
           f0_2(iE,iX) = FermiDirac( E(iE), -Mnu, kT )
         ELSE
-          f0_2(iE,iX) = FermiDirac( E(iE), Zero, kT )
+          f0_2(iE,iX) = FermiDirac( E(iE), kT )
         END IF
 
       END DO
@@ -3123,6 +3131,48 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeNeutrinoOpacity_E_E_T_Eta_Point
+
+
+  FUNCTION FermiDirac0_Scalar( E, kT ) RESULT( FermiDirac )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: E, kT
+    REAL(DP) :: FermiDirac
+
+    REAL(DP) :: Exponent
+
+    Exponent = MIN( MAX( E / kT, - Log1d100 ), + Log1d100 )
+
+    FermiDirac &
+      = One / ( EXP( Exponent ) + One )
+
+    RETURN
+  END FUNCTION FermiDirac0_Scalar
+
+
+  FUNCTION FermiDirac0_Vector( E, kT ) RESULT( FermiDirac )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: E(:), kT
+    REAL(DP) :: FermiDirac(SIZE(E))
+
+    REAL(DP) :: Exponent(SIZE(E))
+
+    Exponent = MIN( MAX( E / kT, - Log1d100 ), + Log1d100 )
+
+    FermiDirac &
+      = One / ( EXP( Exponent ) + One )
+
+    RETURN
+  END FUNCTION FermiDirac0_Vector
 
 
   FUNCTION FermiDirac_Scalar( E, Mu, kT ) RESULT( FermiDirac )

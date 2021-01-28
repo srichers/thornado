@@ -572,7 +572,7 @@ CONTAINS
           DO iNodeX1 = 1, nNodesX(1)
 
             iNodeX   = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            iNodeX_0 = NodeNumberX( 1,       iNodeX2, iNodeX3 )
+            iNodeX_0 = 1 + nNodesX(1) * ( (iNodeX2-1) + (iNodeX3-1) * nNodesX(2) )
 
             D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
             E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
@@ -635,7 +635,7 @@ CONTAINS
           DO iNodeX1 = 1, nNodesX(1)
 
             iNodeX   = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            iNodeX_0 = NodeNumberX( 1,       iNodeX2, iNodeX3 )
+            iNodeX_0 = 1 + nNodesX(1) * ( (iNodeX2-1) + (iNodeX3-1) * nNodesX(2) )
 
             D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
             E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
