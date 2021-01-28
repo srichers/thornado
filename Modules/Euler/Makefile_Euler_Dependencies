@@ -154,6 +154,7 @@ Euler_DiscontinuityDetectionModule.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule.o \
   EquationOfStateModule.o \
+  UtilitiesModule.o \
   TimersModule_Euler.o \
   Euler_ErrorModule.o \
   Euler_DiscontinuityDetectionModule.F90

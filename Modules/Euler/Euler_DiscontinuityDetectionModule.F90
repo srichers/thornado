@@ -16,6 +16,8 @@ MODULE Euler_DiscontinuityDetectionModule
     NodesX1, &
     NodesX2, &
     NodesX3
+  USE LinearAlgebraModule, ONLY: &
+    MatrixVectorMultiply
   USE PolynomialBasisModule_Lagrange, ONLY: &
     L_X1, &
     L_X2, &
@@ -53,11 +55,16 @@ MODULE Euler_DiscontinuityDetectionModule
     ComputePrimitive_Euler
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive
+  USE UtilitiesModule, ONLY: &
+    IsCornerCell
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler, &
     Timer_Euler_TroubledCellIndicator, &
-    Timer_Euler_ShockDetector
+    Timer_Euler_ShockDetector, &
+    Timer_Euler_CopyIn, &
+    Timer_Euler_CopyOut, &
+    Timer_Euler_Permute
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
@@ -359,348 +366,287 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF
-    REAL(DP) :: V_K
-    REAL(DP) :: uPF_K(nPF)
-    REAL(DP) :: uCF_K(nCF)
-    REAL(DP) :: uGF_K(nGF)
-    REAL(DP) :: P_K(2), VX_K(2)
+    INTEGER  :: iNX, iX1, iX2, iX3
     REAL(DP) :: GradP, DivV
+    INTEGER  :: nK(3), nK_X, nCF_X, nGF_X
 
-    INTEGER :: iErr1(iX_B0(1):iX_E0(1), &
-                     iX_B0(2):iX_E0(2), &
-                     iX_B0(3):iX_E0(3))
+    REAL(DP) :: SqrtGm(1:nDOFX,   iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
 
-    INTEGER :: iErr2(iX_B0(1):iX_E0(1), &
-                     iX_B0(2):iX_E0(2), &
-                     iX_B0(3):iX_E0(3))
+    ! 1: Gm11, 2: Gm22, 3: Gm33, 4: Alpha, 5: Beta1, 6: Beta2, 7: Beta3
+    REAL(DP) :: G_X(1:nDOFX,1:7,  iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
 
-    iErr1 = 0
-    iErr2 = 0
+    REAL(DP) :: GK(1:7,           iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: U_X(1:nDOFX,1:nCF,iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: UK(1:nCF,         iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: PK(1:nPF,         iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: VK(3,             iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: PrK(              iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: Vol(              iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
+
+    INTEGER :: iErr(              iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
+
+    CALL TimersStart_Euler( Timer_Euler_ShockDetector )
+
+    CALL TimersStart_Euler( Timer_Euler_CopyIn )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D ) &
+    !$OMP MAP( alloc: SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, iErr )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D ) &
+    !$ACC CREATE(     SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, iErr )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+
+    nK_X = PRODUCT( [ iX_E1(1) - iX_B1(1) + 1, &
+                      iX_E1(2) - iX_B1(2) + 1, &
+                      iX_E1(3) - iX_B1(3) + 1 ] )
+
+    nCF_X = nCF * nK_X
+    nGF_X = 7   * nK_X
+
+    CALL TimersStart_Euler( Timer_Euler_Permute )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B1, iX_E1, SqrtGm, G_X, U_X, G, U, D )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iNX = 1, nDOFX
+
+      D(iNX,iX1,iX2,iX3,iDF_Sh_X1) = Zero
+      D(iNX,iX1,iX2,iX3,iDF_Sh_X2) = Zero
+      D(iNX,iX1,iX2,iX3,iDF_Sh_X3) = Zero
+
+      IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
+      SqrtGm(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_SqrtGm)
+
+      G_X(iNX,1,iX1,iX2,iX3) &
+        = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * SqrtGm(iNX,iX1,iX2,iX3)
+      G_X(iNX,2,iX1,iX2,iX3) &
+        = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) * SqrtGm(iNX,iX1,iX2,iX3)
+      G_X(iNX,3,iX1,iX2,iX3) &
+        = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) * SqrtGm(iNX,iX1,iX2,iX3)
+      G_X(iNX,4,iX1,iX2,iX3) &
+        = G(iNX,iX1,iX2,iX3,iGF_Alpha   ) * SqrtGm(iNX,iX1,iX2,iX3)
+      G_X(iNX,5,iX1,iX2,iX3) &
+        = G(iNX,iX1,iX2,iX3,iGF_Beta_1  ) * SqrtGm(iNX,iX1,iX2,iX3)
+      G_X(iNX,6,iX1,iX2,iX3) &
+        = G(iNX,iX1,iX2,iX3,iGF_Beta_2  ) * SqrtGm(iNX,iX1,iX2,iX3)
+      G_X(iNX,7,iX1,iX2,iX3) &
+        = G(iNX,iX1,iX2,iX3,iGF_Beta_3  ) * SqrtGm(iNX,iX1,iX2,iX3)
+
+      U_X(iNX,iCF_D ,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCF_D ) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCF_S1,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCF_S1) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCF_S2,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCF_S2) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCF_S3,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCF_S3) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCF_E ,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCF_E ) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCF_Ne,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCF_Ne) * SqrtGm(iNX,iX1,iX2,iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_Permute )
+
+    ! --- Compute integrals ---
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nK_X, One, SqrtGm, nDOFX, &
+             WeightsX_q, 1, Zero, Vol, 1 )
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nCF_X, One, U_X, nDOFX, &
+             WeightsX_q, 1, Zero, UK, 1 )
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nDOFX, nGF_X, One, G_X, nDOFX, &
+             WeightsX_q, 1, Zero, GK, 1 )
+
+    ! --- Form cell averages ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B1, iX_E1, GK, UK, Vol, PK, PrK, VK, iErr )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+#endif
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      iErr(iX1,iX2,iX3) = 0
+
+      IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
+      GK(1,iX1,iX2,iX3) = GK(1,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      GK(2,iX1,iX2,iX3) = GK(2,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      GK(3,iX1,iX2,iX3) = GK(3,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      GK(4,iX1,iX2,iX3) = GK(4,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      GK(5,iX1,iX2,iX3) = GK(5,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      GK(6,iX1,iX2,iX3) = GK(6,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      GK(7,iX1,iX2,iX3) = GK(7,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+
+      UK(iCF_D ,iX1,iX2,iX3) = UK(iCF_D ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCF_S1,iX1,iX2,iX3) = UK(iCF_S1,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCF_S2,iX1,iX2,iX3) = UK(iCF_S2,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCF_S3,iX1,iX2,iX3) = UK(iCF_S3,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCF_E ,iX1,iX2,iX3) = UK(iCF_E ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCF_Ne,iX1,iX2,iX3) = UK(iCF_Ne,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+
+      CALL ComputePrimitive_Euler &
+           ( UK(iCF_D ,iX1,iX2,iX3), &
+             UK(iCF_S1,iX1,iX2,iX3), &
+             UK(iCF_S2,iX1,iX2,iX3), &
+             UK(iCF_S3,iX1,iX2,iX3), &
+             UK(iCF_E ,iX1,iX2,iX3), &
+             UK(iCF_Ne,iX1,iX2,iX3), &
+             PK(iPF_D ,iX1,iX2,iX3), &
+             PK(iPF_V1,iX1,iX2,iX3), &
+             PK(iPF_V2,iX1,iX2,iX3), &
+             PK(iPF_V3,iX1,iX2,iX3), &
+             PK(iPF_E ,iX1,iX2,iX3), &
+             PK(iPF_Ne,iX1,iX2,iX3), &
+             GK(1     ,iX1,iX2,iX3), &
+             GK(2     ,iX1,iX2,iX3), &
+             GK(3     ,iX1,iX2,iX3), &
+             iErr(     iX1,iX2,iX3) )
+
+      CALL ComputePressureFromPrimitive &
+             ( PK(iPF_D ,iX1,iX2,iX3), &
+               PK(iPF_E ,iX1,iX2,iX3), &
+               PK(iPF_Ne,iX1,iX2,iX3), &
+               PrK(      iX1,iX2,iX3) )
+
+      VK(1,iX1,iX2,iX3) &
+        = GK(4,iX1,iX2,iX3) * PK(iPF_V1,iX1,iX2,iX3) + GK(5,iX1,iX2,iX3)
+
+      VK(2,iX1,iX2,iX3) &
+        = GK(4,iX1,iX2,iX3) * PK(iPF_V2,iX1,iX2,iX3) + GK(6,iX1,iX2,iX3)
+
+      VK(3,iX1,iX2,iX3) &
+        = GK(4,iX1,iX2,iX3) * PK(iPF_V3,iX1,iX2,iX3) + GK(7,iX1,iX2,iX3)
+
+    END DO
+    END DO
+    END DO
 
     ! --- Shock detector, adapted from
     !     Fryxell et al., (2000), ApJS, 131, 273 ---
 
-    CALL TimersStart_Euler( Timer_Euler_ShockDetector )
-
-    D(:,:,:,:,iDF_Sh_X1) = Zero
-    D(:,:,:,:,iDF_Sh_X2) = Zero
-    D(:,:,:,:,iDF_Sh_X3) = Zero
-
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B0, iX_E0, PrK, VK, D )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      ! --- Lower neighbor in X1 direction ---
-
-      V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
-
-      DO iCF = 1, nCF
-
-        uCF_K(iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1-1,iX2,iX3,iCF) ) / V_K
-
-      END DO
-
-      DO iGF = 1, nGF
-
-        uGF_K(iGF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
-                  * G(:,iX1-1,iX2,iX3,iGF) ) / V_K
-
-      END DO
-
-      CALL ComputePrimitive_Euler &
-           ( uCF_K(iCF_D ), &
-             uCF_K(iCF_S1), &
-             uCF_K(iCF_S2), &
-             uCF_K(iCF_S3), &
-             uCF_K(iCF_E ), &
-             uCF_K(iCF_Ne), &
-             uPF_K(iPF_D ), &
-             uPF_K(iPF_V1), &
-             uPF_K(iPF_V2), &
-             uPF_K(iPF_V3), &
-             uPF_K(iPF_E ), &
-             uPF_K(iPF_Ne), &
-             uGF_K(iGF_Gm_dd_11), &
-             uGF_K(iGF_Gm_dd_22), &
-             uGF_K(iGF_Gm_dd_33), &
-             iErr1(iX1,iX2,iX3) )
-
-      VX_K(1) = uGF_K(iGF_Alpha) * uPF_K(iPF_V1) + uGF_K(iGF_Beta_1)
-
-      CALL ComputePressureFromPrimitive &
-             ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(1) )
-
-      ! --- Upper neighbor in X1 direction ---
-
-      V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
-
-      DO iCF = 1, nCF
-
-        uCF_K(iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1+1,iX2,iX3,iCF) ) / V_K
-
-      END DO
-
-      DO iGF = 1, nGF
-
-        uGF_K(iGF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
-                  * G(:,iX1+1,iX2,iX3,iGF) ) / V_K
-
-      END DO
-
-      CALL ComputePrimitive_Euler &
-           ( uCF_K(iCF_D ), &
-             uCF_K(iCF_S1), &
-             uCF_K(iCF_S2), &
-             uCF_K(iCF_S3), &
-             uCF_K(iCF_E ), &
-             uCF_K(iCF_Ne), &
-             uPF_K(iPF_D ), &
-             uPF_K(iPF_V1), &
-             uPF_K(iPF_V2), &
-             uPF_K(iPF_V3), &
-             uPF_K(iPF_E ), &
-             uPF_K(iPF_Ne), &
-             uGF_K(iGF_Gm_dd_11), &
-             uGF_K(iGF_Gm_dd_22), &
-             uGF_K(iGF_Gm_dd_33), &
-             iErr2(iX1,iX2,iX3) )
-
-      VX_K(2) = uGF_K(iGF_Alpha) * uPF_K(iPF_V1) + uGF_K(iGF_Beta_1)
-
-      CALL ComputePressureFromPrimitive &
-             ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(2) )
-
       ! --- Compute pressure gradient and divergence of velocity (X1) ---
 
-      GradP = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
+      GradP = ABS( PrK(iX1+1,iX2,iX3) - PrK(iX1-1,iX2,iX3) ) &
+                / MIN( PrK(iX1+1,iX2,iX3), PrK(iX1-1,iX2,iX3) )
 
-      DivV  = VX_K(2) - VX_K(1)
+      DivV  = VK(1,iX1+1,iX2,iX3) - VK(1,iX1-1,iX2,iX3)
 
-      IF( GradP .GT. Third .AND. DivV .LT. Zero ) &
-        D(:,iX1,iX2,iX3,iDF_Sh_X1) = One
+      IF( GradP .GT. Third .AND. DivV .LT. Zero )THEN
+
+        DO iNX = 1, nDOFX
+
+          D(iNX,iX1,iX2,iX3,iDF_Sh_X1) = One
+
+        END DO
+
+      END IF
 
       IF( nDimsX .GT. 1 )THEN
 
-        ! --- Lower neighbor in X2 direction ---
-
-        V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2-1,iX3,iGF_SqrtGm) )
-
-        DO iCF = 1, nCF
-
-          uCF_K(iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2-1,iX3,iCF) ) / V_K
-
-        END DO
-
-        DO iGF = 1, nGF
-
-          uGF_K(iGF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
-                    * G(:,iX1,iX2-1,iX3,iGF) ) / V_K
-
-        END DO
-
-        CALL ComputePrimitive_Euler &
-             ( uCF_K(iCF_D ), &
-               uCF_K(iCF_S1), &
-               uCF_K(iCF_S2), &
-               uCF_K(iCF_S3), &
-               uCF_K(iCF_E ), &
-               uCF_K(iCF_Ne), &
-               uPF_K(iPF_D ), &
-               uPF_K(iPF_V1), &
-               uPF_K(iPF_V2), &
-               uPF_K(iPF_V3), &
-               uPF_K(iPF_E ), &
-               uPF_K(iPF_Ne), &
-               uGF_K(iGF_Gm_dd_11), &
-               uGF_K(iGF_Gm_dd_22), &
-               uGF_K(iGF_Gm_dd_33) )
-
-        VX_K(1) = uGF_K(iGF_Alpha) * uPF_K(iPF_V2) + uGF_K(iGF_Beta_2)
-
-        CALL ComputePressureFromPrimitive &
-               ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(1) )
-
-        ! --- Upper neighbor in X2 direction ---
-
-        V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2+1,iX3,iGF_SqrtGm) )
-
-        DO iCF = 1, nCF
-
-          uCF_K(iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2+1,iX3,iCF) ) / V_K
-
-        END DO
-
-        DO iGF = 1, nGF
-
-          uGF_K(iGF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
-                    * G(:,iX1,iX2+1,iX3,iGF) ) / V_K
-
-        END DO
-
-        CALL ComputePrimitive_Euler &
-             ( uCF_K(iCF_D ), &
-               uCF_K(iCF_S1), &
-               uCF_K(iCF_S2), &
-               uCF_K(iCF_S3), &
-               uCF_K(iCF_E ), &
-               uCF_K(iCF_Ne), &
-               uPF_K(iPF_D ), &
-               uPF_K(iPF_V1), &
-               uPF_K(iPF_V2), &
-               uPF_K(iPF_V3), &
-               uPF_K(iPF_E ), &
-               uPF_K(iPF_Ne), &
-               uGF_K(iGF_Gm_dd_11), &
-               uGF_K(iGF_Gm_dd_22), &
-               uGF_K(iGF_Gm_dd_33) )
-
-        VX_K(2) = uGF_K(iGF_Alpha) * uPF_K(iPF_V2) + uGF_K(iGF_Beta_2)
-
-        CALL ComputePressureFromPrimitive &
-               ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(2) )
-
         ! --- Compute pressure gradient and divergence of velocity (X2) ---
 
-        GradP = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
+        GradP = ABS( PrK(iX1,iX2+1,iX3) - PrK(iX1,iX2-1,iX3) ) &
+                  / MIN( PrK(iX1,iX2+1,iX3), PrK(iX1,iX2-1,iX3) )
 
-        DivV  = VX_K(2) - VX_K(1)
+        DivV  = VK(2,iX1,iX2+1,iX3) - VK(2,iX1,iX2-1,iX3)
 
-        IF( GradP .GT. Third .AND. DivV .LT. Zero ) &
-          D(:,iX1,iX2,iX3,iDF_Sh_X2) = One
+        IF( GradP .GT. Third .AND. DivV .LT. Zero )THEN
+
+          DO iNX = 1, nDOFX
+
+            D(iNX,iX1,iX2,iX3,iDF_Sh_X2) = One
+
+          END DO
+
+        END IF
 
       END IF
 
       IF( nDimsX .GT. 2 )THEN
 
-        ! --- Lower neighbor in X3 direction ---
-
-        V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3-1,iGF_SqrtGm) )
-
-        DO iCF = 1, nCF
-
-          uCF_K(iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3-1,iCF) ) / V_K
-
-        END DO
-
-        DO iGF = 1, nGF
-
-          uGF_K(iGF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
-                    * G(:,iX1,iX2,iX3-1,iGF) ) / V_K
-
-        END DO
-
-        CALL ComputePrimitive_Euler &
-             ( uCF_K(iCF_D ), &
-               uCF_K(iCF_S1), &
-               uCF_K(iCF_S2), &
-               uCF_K(iCF_S3), &
-               uCF_K(iCF_E ), &
-               uCF_K(iCF_Ne), &
-               uPF_K(iPF_D ), &
-               uPF_K(iPF_V1), &
-               uPF_K(iPF_V2), &
-               uPF_K(iPF_V3), &
-               uPF_K(iPF_E ), &
-               uPF_K(iPF_Ne), &
-               uGF_K(iGF_Gm_dd_11), &
-               uGF_K(iGF_Gm_dd_22), &
-               uGF_K(iGF_Gm_dd_33) )
-
-        VX_K(1) = uGF_K(iGF_Alpha) * uPF_K(iPF_V3) + uGF_K(iGF_Beta_3)
-
-        CALL ComputePressureFromPrimitive &
-               ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(1) )
-
-        ! --- Upper neighbor in X3 direction ---
-
-        V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3+1,iGF_SqrtGm) )
-
-        DO iCF = 1, nCF
-
-          uCF_K(iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3+1,iCF) ) / V_K
-
-        END DO
-
-        DO iGF = 1, nGF
-
-          uGF_K(iGF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
-                    * G(:,iX1,iX2,iX3+1,iGF) ) / V_K
-
-        END DO
-
-        CALL ComputePrimitive_Euler &
-             ( uCF_K(iCF_D ), &
-               uCF_K(iCF_S1), &
-               uCF_K(iCF_S2), &
-               uCF_K(iCF_S3), &
-               uCF_K(iCF_E ), &
-               uCF_K(iCF_Ne), &
-               uPF_K(iPF_D ), &
-               uPF_K(iPF_V1), &
-               uPF_K(iPF_V2), &
-               uPF_K(iPF_V3), &
-               uPF_K(iPF_E ), &
-               uPF_K(iPF_Ne), &
-               uGF_K(iGF_Gm_dd_11), &
-               uGF_K(iGF_Gm_dd_22), &
-               uGF_K(iGF_Gm_dd_33) )
-
-        VX_K(2) = uGF_K(iGF_Alpha) * uPF_K(iPF_V3) + uGF_K(iGF_Beta_3)
-
-        CALL ComputePressureFromPrimitive &
-               ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(2) )
-
         ! --- Compute pressure gradient and divergence of velocity (X3) ---
 
-        GradP = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
+        GradP = ABS( PrK(iX1,iX2,iX3+1) - PrK(iX1,iX2,iX3-1) ) &
+                  / MIN( PrK(iX1,iX2,iX3+1), PrK(iX1,iX2,iX3-1) )
 
-        DivV  = VX_K(2) - VX_K(1)
+        DivV  = VK(3,iX1,iX2,iX3+1) - VK(3,iX1,iX2,iX3-1)
 
-        IF( GradP .GT. Third .AND. DivV .LT. Zero ) &
-          D(:,iX1,iX2,iX3,iDF_Sh_X3) = One
+        IF( GradP .GT. Third .AND. DivV .LT. Zero )THEN
+
+          DO iNX = 1, nDOFX
+
+            D(iNX,iX1,iX2,iX3,iDF_Sh_X3) = One
+
+          END DO
+
+        END IF
 
       END IF
 
@@ -708,27 +654,38 @@ CONTAINS
     END DO
     END DO
 
-    IF( ANY( iErr1 .NE. 0 ) .OR. ANY( iErr2 .NE. 0 ) )THEN
+    CALL TimersStart_Euler( Timer_Euler_CopyOut )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    D, iErr ) &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
+    !$OMP               SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(      D, iErr ) &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
+    !$ACC               SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_CopyOut )
+
+    IF( ANY( iErr .NE. 0 ) )THEN
 
       PRINT*, 'Shock Detector'
 
-      PRINT*, '1'
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
 
-        CALL DescribeError_Euler( iErr1(iX1,iX2,iX3) )
+        IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
-      END DO
-      END DO
-      END DO
+        IF( iErr(iX1,iX2,iX3) .NE. 0 )THEN
 
-      PRINT*, '2'
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+          PRINT*, 'iX1, iX2, iX3, iErr = ', iX1, iX2, iX3, iErr
+          CALL DescribeError_Euler( iErr(iX1,iX2,iX3) )
 
-        CALL DescribeError_Euler( iErr2(iX1,iX2,iX3) )
+        END IF
 
       END DO
       END DO
@@ -742,4 +699,3 @@ CONTAINS
 
 
 END MODULE Euler_DiscontinuityDetectionModule
-
