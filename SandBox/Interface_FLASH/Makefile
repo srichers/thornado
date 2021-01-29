@@ -89,7 +89,9 @@ OBJS = \
        PhysicalConstantsModule.o \
        UnitsModule.o \
        ThornadoInitializationModule.o \
-       TimeSteppingModule_Flash.o
+       TimeSteppingModule_Flash.o \
+       TimeSteppingModule_Flash_GPU.o
+
 ifeq ($(USE_GPU),TRUE)
 OBJS += \
        CudaModule.o
@@ -137,6 +139,20 @@ TimeSteppingModule_Flash.o: \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o  \
   TimeSteppingModule_Flash.F90
+
+TimeSteppingModule_Flash_GPU.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TimersModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_DiscretizationModule_Streaming.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
+  TwoMoment_PositivityLimiterModule.o \
+  PhysicalConstantsModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o  \
+  TimeSteppingModule_Flash_GPU.F90
 
 ThornadoInitializationModule.o: \
   KindModule.o \

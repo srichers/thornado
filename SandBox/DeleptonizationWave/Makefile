@@ -38,13 +38,13 @@ DeleptonizationWave1D: \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
-	TimeSteppingModule_Flash.o \
+	TimeSteppingModule_Flash_GPU.o \
 	DeleptonizationWave1D.o
 	$(FLINKER) $(FLAGS) -o DeleptonizationWave1D_GPU_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
-	TimeSteppingModule_Flash.o \
+	TimeSteppingModule_Flash_GPU.o \
 	DeleptonizationWave1D.o \
 	$(LIBRARIES)
 
@@ -118,7 +118,7 @@ DeleptonizationWave1D.o: \
   RadiationFieldsModule.o \
   EquationOfStateModule_TABLE.o \
   OpacityModule_TABLE.o \
-  TimeSteppingModule_Flash.o \
+  TimeSteppingModule_Flash_GPU.o \
   InitializationModule.o \
   InputOutputModuleHDF.o \
   Euler_UtilitiesModule.o \
