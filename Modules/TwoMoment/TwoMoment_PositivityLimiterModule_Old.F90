@@ -38,7 +38,8 @@ MODULE TwoMoment_PositivityLimiterModule_Old
   PUBLIC :: TallyPositivityLimiter_TwoMoment
 
   CHARACTER(256)        :: TallyFileName
-  LOGICAL               :: Debug = .FALSE.
+  LOGICAL               :: Debug = .true.
+  LOGICAL               :: Debug2 = .true.
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: UsePositivityLimiterTally
   INTEGER,    PARAMETER :: nPS = 9  ! Number of Positive Point Sets
@@ -116,10 +117,10 @@ CONTAINS
       WRITE(*,'(A6,A,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter 
       WRITE(*,*)
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_1 = ', Max_1
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Theta_FD = ', Theta_FD
+      WRITE(*,'(A6,A12,ES23.15E3)') '', 'Min_1 = ', Min_1
+      WRITE(*,'(A6,A12,ES23.15E3)') '', 'Max_1 = ', Max_1
+      WRITE(*,'(A6,A12,ES23.15E3)') '', 'Min_2 = ', Min_2
+      WRITE(*,'(A6,A12,ES23.15E3)') '', 'Theta_FD = ', Theta_FD
     END IF
 
     ! --- Compute Number of Positive Points per Set ---
@@ -244,6 +245,8 @@ CONTAINS
     REAL(DP) :: Tau_q(nDOF), Tau_K
     REAL(DP), EXTERNAL :: DDOT
 
+    IF( Debug ) WRITE(*,*) 'Calling CPU Positivity Limiter'
+
     IF( nDOF == 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
@@ -278,6 +281,17 @@ CONTAINS
       NegativeStates = .FALSE.
 
       CALL ComputePointValues( nCR, U_q, U_PP )
+
+      IF( Debug )THEN
+        WRITE(*,'(A,8ES12.4)') 'U_Q_N  ', U_q(:,1)
+        WRITE(*,'(A,8ES12.4)') 'U_Q_G1 ', U_q(:,2)
+        WRITE(*,'(A,8ES12.4)') 'U_Q_G2 ', U_q(:,3)
+        WRITE(*,'(A,8ES12.4)') 'U_Q_G3 ', U_q(:,4)
+        WRITE(*,'(A,8ES12.4)') 'U_P_N  ', U_PP(:,1)
+        WRITE(*,'(A,8ES12.4)') 'U_P_G1 ', U_PP(:,2)
+        WRITE(*,'(A,8ES12.4)') 'U_P_G2 ', U_PP(:,3)
+        WRITE(*,'(A,8ES12.4)') 'U_P_G3 ', U_PP(:,4)
+      END IF
 
       CALL ComputePointValues( nGF, GX_q, GX_PP )
       CALL ComputeGeometryX_FromScaleFactors( GX_PP )
@@ -358,6 +372,13 @@ CONTAINS
             CALL SolveTheta_Bisection &
                    ( U_PP(iP,1:nCR), U_K(1:nCR), Min_2, Theta_P )
 
+            IF( Debug2 )THEN
+              WRITE(*,'(A,5I5,ES12.4)') '@', iP, iZ1, iZ2, iZ3, iZ4, Theta_P
+              WRITE(*,'(A,8ES12.4)') 'U_K ', U_K
+              WRITE(*,'(A,8ES12.4)') 'U_PP', U_PP(iP,1:nCR)
+              WRITE(*,'(A,8ES12.4)') 'Theta_P', Theta_P
+            END IF
+
             Theta_2 = MIN( Theta_2, Theta_P )
 
           END IF
@@ -401,6 +422,15 @@ CONTAINS
 
       END IF
 
+    IF( Debug2 .and. ANY( NegativeStates ) )THEN
+      WRITE(*,'(A,8I5)') '@', iZ1, iZ2, iZ3, iZ4, iS
+      WRITE(*,'(A,8ES12.4)') 'New U_N ', U(1:nDOF,iZ1,iZ2,iZ3,iZ4,1,iS)
+      WRITE(*,'(A,8ES12.4)') 'New U_G1', U(1:nDOF,iZ1,iZ2,iZ3,iZ4,2,iS)
+      WRITE(*,'(A,8ES12.4)') 'New U_G2', U(1:nDOF,iZ1,iZ2,iZ3,iZ4,3,iS)
+      WRITE(*,'(A,8ES12.4)') 'New U_G3', U(1:nDOF,iZ1,iZ2,iZ3,iZ4,4,iS)
+      IF( Debug ) STOP ' END ONE'
+    END IF
+
     END DO
     END DO
     END DO
@@ -413,6 +443,8 @@ CONTAINS
     WRITE(*,'(a20,7i4)')     'MAXLOC(U)', MAXLOC(U)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(U)', MAXVAL(U)
 #endif
+
+    !IF( Debug ) STOP 'Ending CPU ApplyPositivityLimiter_TwoMoment'
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 

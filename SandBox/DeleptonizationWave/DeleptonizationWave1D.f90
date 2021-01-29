@@ -76,7 +76,7 @@ PROGRAM DeleptonizationWave1D
   USE OpacityModule_TABLE, ONLY: &
     InitializeOpacities_TABLE, &
     FinalizeOpacities_TABLE
-  USE TimeSteppingModule_Flash, ONLY: &
+  USE TimeSteppingModule_Flash_GPU, ONLY: &
     Update_IMEX_PDARS
   USE InitializationModule, ONLY: &
     InitializeFields_DeleptonizationWave
@@ -364,11 +364,11 @@ PROGRAM DeleptonizationWave1D
 
     END IF
 
-    !IF( MOD( iCycle, iCycleT ) == 0 )THEN
-
-    !  CALL WriteNonlinearSolverTally( t )
-
-    !END IF
+!    IF( MOD( iCycle, iCycleT ) == 0 )THEN
+!
+!      CALL WriteNonlinearSolverTally( t )
+!
+!    END IF
 
   END DO
 
