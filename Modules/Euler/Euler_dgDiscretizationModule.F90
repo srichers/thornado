@@ -615,7 +615,7 @@ CONTAINS
                G_F(iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
                G_F(iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
                G_F(iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
-               iErr_Option = iErr_L(iNX_X1,iX2,iX3,iX1) )
+               iErr_L(iNX_X1,iX2,iX3,iX1) )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), P_L  )
@@ -662,7 +662,7 @@ CONTAINS
                G_F(iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
                G_F(iNX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
                G_F(iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
-               iErr_Option = iErr_R(iNX_X1,iX2,iX3,iX1) )
+               iErr_R(iNX_X1,iX2,iX3,iX1) )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), P_R  )
@@ -714,7 +714,7 @@ CONTAINS
               G_F(iNX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), AlphaPls, AlphaMns, &
               G_F(iNX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
               G_F(iNX_X1,iGF_Beta_1  ,iX2,iX3,iX1), &
-              iErr_Option = iErr_M(iNX_X1,iX2,iX3,iX1) )
+              iErr_M(iNX_X1,iX2,iX3,iX1) )
 
       Flux_X1_F &
         = NumericalFlux_Euler_X1 &
@@ -807,7 +807,7 @@ CONTAINS
                G_K(iNX,iGF_Gm_dd_11,iX2,iX3,iX1), &
                G_K(iNX,iGF_Gm_dd_22,iX2,iX3,iX1), &
                G_K(iNX,iGF_Gm_dd_33,iX2,iX3,iX1), &
-               iErr_Option = iErr_V(iNX,iX2,iX3,iX1) )
+               iErr_V(iNX,iX2,iX3,iX1) )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K )
@@ -915,56 +915,80 @@ CONTAINS
         ANY( iErr_M .NE. 0 ) .OR. &
         ANY( iErr_V .NE. 0 ) )THEN
 
-      PRINT*, 'Surface term (X1) (Left)'
+      WRITE(*,*) 'ERROR: Surface term (X1) (Left)'
 
-      DO iX1 = iX_B0(1), iX_E0(1) + 1
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1) + 1
       DO iNX_X1 = 1, nDOFX_X1
 
-        CALL DescribeError_Euler( iErr_L(iNX_X1,iX2,iX3,iX1) )
+        IF( iErr_L(iNX_X1,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X1, iX1, iX2, iX3 = ', iNX_X1, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_L(iNX_X1,iX2,iX3,iX1) )
+
+        END IF
 
       END DO
       END DO
       END DO
       END DO
 
-      PRINT*, 'Surface term (X1) (Right)'
+      WRITE(*,*) 'ERROR: Surface term (X1) (Right)'
 
-      DO iX1 = iX_B0(1), iX_E0(1) + 1
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1) + 1
       DO iNX_X1 = 1, nDOFX_X1
 
-        CALL DescribeError_Euler( iErr_R(iNX_X1,iX2,iX3,iX1) )
+        IF( iErr_R(iNX_X1,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X1, iX1, iX2, iX3 = ', iNX_X1, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_R(iNX_X1,iX2,iX3,iX1) )
+
+        END IF
 
       END DO
       END DO
       END DO
       END DO
 
-      PRINT*, 'AlphaMiddle (X1)'
+      WRITE(*,*) 'ERROR: AlphaMiddle (X1)'
 
-      DO iX1 = iX_B0(1), iX_E0(1) + 1
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1) + 1
       DO iNX_X1 = 1, nDOFX_X1
 
-        CALL DescribeError_Euler( iErr_M(iNX_X1,iX2,iX3,iX1) )
+        IF( iErr_M(iNX_X1,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X1, iX1, iX2, iX3 = ', iNX_X1, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_M(iNX_X1,iX2,iX3,iX1) )
+
+        END IF
 
       END DO
       END DO
       END DO
       END DO
 
-      PRINT*, 'Volume term (X1)'
+      WRITE(*,*) 'ERROR: Volume term (X1)'
 
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
       DO iNX = 1, nDOFX
 
-        CALL DescribeError_Euler( iErr_V(iNX,iX2,iX3,iX1) )
+        IF( iErr_V(iNX,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_V(iNX,iX2,iX3,iX1) )
+
+        END IF
 
       END DO
       END DO
@@ -1296,7 +1320,7 @@ CONTAINS
                G_F(iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
                G_F(iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
                G_F(iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
-               iErr_Option = iErr_L(iNX_X2,iX1,iX3,iX2) )
+               iErr_L(iNX_X2,iX1,iX3,iX2) )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), P_L  )
@@ -1343,7 +1367,7 @@ CONTAINS
                G_F(iNX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
                G_F(iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
                G_F(iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2), &
-               iErr_Option = iErr_R(iNX_X2,iX1,iX3,iX2) )
+               iErr_R(iNX_X2,iX1,iX3,iX2) )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), P_R  )
@@ -1395,7 +1419,7 @@ CONTAINS
               G_F(iNX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), AlphaPls, AlphaMns, &
               G_F(iNX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
               G_F(iNX_X2,iGF_Beta_2  ,iX1,iX3,iX2), &
-              iErr_Option = iErr_M(iNX_X2,iX1,iX3,iX2) )
+              iErr_M(iNX_X2,iX1,iX3,iX2) )
 
       Flux_X2_F &
         = NumericalFlux_Euler_X2 &
@@ -1488,7 +1512,7 @@ CONTAINS
                G_K(iNX,iGF_Gm_dd_11,iX1,iX3,iX2), &
                G_K(iNX,iGF_Gm_dd_22,iX1,iX3,iX2), &
                G_K(iNX,iGF_Gm_dd_33,iX1,iX3,iX2), &
-               iErr_Option = iErr_V(iNX,iX1,iX3,iX2) )
+               iErr_V(iNX,iX1,iX3,iX2) )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K )
@@ -1596,56 +1620,80 @@ CONTAINS
         ANY( iErr_M .NE. 0 ) .OR. &
         ANY( iErr_V .NE. 0 ) )THEN
 
-      PRINT*, 'Surface term (X2) (Left)'
+      WRITE(*,*) 'ERROR: Surface term (X2) (Left)'
 
-      DO iX2 = iX_B0(2), iX_E0(2) + 1
       DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2) + 1
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX_X2 = 1, nDOFX_X2
 
-        CALL DescribeError_Euler( iErr_L(iNX_X2,iX1,iX3,iX2) )
+        IF( iErr_L(iNX_X2,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X2, iX1, iX2, iX3 = ', iNX_X2, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_L(iNX_X2,iX1,iX3,iX2) )
+
+        END IF
 
       END DO
       END DO
       END DO
       END DO
 
-      PRINT*, 'Surface term (X2) (Right)'
+      WRITE(*,*) 'ERROR: Surface term (X2) (Right)'
 
-      DO iX2 = iX_B0(2), iX_E0(2) + 1
       DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2) + 1
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX_X2 = 1, nDOFX_X2
 
-        CALL DescribeError_Euler( iErr_R(iNX_X2,iX1,iX3,iX2) )
+        IF( iErr_R(iNX_X2,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X2, iX1, iX2, iX3 = ', iNX_X2, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_R(iNX_X2,iX1,iX3,iX2) )
+
+        END IF
 
       END DO
       END DO
       END DO
       END DO
 
-      PRINT*, 'AlphaMiddle (X2)'
+      WRITE(*,*) 'ERROR: AlphaMiddle (X2)'
 
-      DO iX2 = iX_B0(2), iX_E0(2) + 1
       DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2) + 1
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX_X2 = 1, nDOFX_X2
 
-        CALL DescribeError_Euler( iErr_M(iNX_X2,iX1,iX3,iX2) )
+        IF( iErr_M(iNX_X2,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X2, iX1, iX2, iX3 = ', iNX_X2, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_M(iNX_X2,iX1,iX3,iX2) )
+
+        END IF
 
       END DO
       END DO
       END DO
       END DO
 
-      PRINT*, 'Volume term (X1)'
+      WRITE(*,*) 'ERROR: Volume term (X2)'
 
+      DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX3 = iX_B0(3), iX_E0(3)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1, nDOFX
 
-        CALL DescribeError_Euler( iErr_V(iNX,iX1,iX3,iX2) )
+        IF( iErr_V(iNX,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_V(iNX,iX1,iX3,iX2) )
+
+        END IF
 
       END DO
       END DO
@@ -1977,7 +2025,7 @@ CONTAINS
                G_F(iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
                G_F(iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
                G_F(iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-               iErr_Option = iErr_L(iNX_X3,iX1,iX2,iX3) )
+               iErr_L(iNX_X3,iX1,iX2,iX3) )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), P_L  )
@@ -2024,7 +2072,7 @@ CONTAINS
                G_F(iNX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
                G_F(iNX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
                G_F(iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), &
-               iErr_Option = iErr_R(iNX_X3,iX1,iX2,iX3) )
+               iErr_R(iNX_X3,iX1,iX2,iX3) )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), P_R  )
@@ -2076,7 +2124,7 @@ CONTAINS
               G_F(iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3), AlphaPls, AlphaMns, &
               G_F(iNX_X3,iGF_Alpha   ,iX1,iX2,iX3), &
               G_F(iNX_X3,iGF_Beta_3  ,iX1,iX2,iX3), &
-              iErr_Option = iErr_M(iNX_X3,iX1,iX2,iX3) )
+              iErr_M(iNX_X3,iX1,iX2,iX3) )
 
       Flux_X3_F &
         = NumericalFlux_Euler_X3 &
@@ -2169,7 +2217,7 @@ CONTAINS
                G_K(iNX,iGF_Gm_dd_11,iX1,iX2,iX3), &
                G_K(iNX,iGF_Gm_dd_22,iX1,iX2,iX3), &
                G_K(iNX,iGF_Gm_dd_33,iX1,iX2,iX3), &
-               iErr_Option = iErr_V(iNX,iX1,iX2,iX3) )
+               iErr_V(iNX,iX1,iX2,iX3) )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K )
@@ -2277,56 +2325,80 @@ CONTAINS
         ANY( iErr_M .NE. 0 ) .OR. &
         ANY( iErr_V .NE. 0 ) )THEN
 
-      PRINT*, 'Surface term (X3) (Left)'
+      WRITE(*,*) 'ERROR: Surface term (X3) (Left)'
 
       DO iX3 = iX_B0(3), iX_E0(3) + 1
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX_X3 = 1, nDOFX_X3
 
-        CALL DescribeError_Euler( iErr_L(iNX_X3,iX1,iX2,iX3) )
+        IF( iErr_L(iNX_X3,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X3, iX1, iX2, iX3 = ', iNX_X3, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_L(iNX_X3,iX1,iX2,iX3) )
+
+        END IF
 
       END DO
       END DO
       END DO
       END DO
 
-      PRINT*, 'Surface term (X3) (Right)'
-
-      DO iX3 = iX_B0(3), iX_E0(3) + 1
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX_X3 = 1, nDOFX_X3
-
-        CALL DescribeError_Euler( iErr_R(iNX_X3,iX1,iX2,iX3) )
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-      PRINT*, 'AlphaMiddle (X3)'
+      WRITE(*,*) 'ERROR: Surface term (X3) (Right)'
 
       DO iX3 = iX_B0(3), iX_E0(3) + 1
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX_X3 = 1, nDOFX_X3
 
-        CALL DescribeError_Euler( iErr_M(iNX_X3,iX1,iX2,iX3) )
+        IF( iErr_R(iNX_X3,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X3, iX1, iX2, iX3 = ', iNX_X3, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_R(iNX_X3,iX1,iX2,iX3) )
+
+        END IF
 
       END DO
       END DO
       END DO
       END DO
 
-      PRINT*, 'Volume term (X3)'
+      WRITE(*,*) 'ERROR: AlphaMiddle (X3)'
+
+      DO iX3 = iX_B0(3), iX_E0(3) + 1
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX_X3 = 1, nDOFX_X3
+
+        IF( iErr_M(iNX_X3,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX_X3, iX1, iX2, iX3 = ', iNX_X3, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_M(iNX_X3,iX1,iX2,iX3) )
+
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'ERROR: Volume term (X3)'
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1, nDOFX
 
-        CALL DescribeError_Euler( iErr_V(iNX,iX1,iX2,iX3) )
+        IF( iErr_V(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
+
+          CALL DescribeError_Euler( iErr_V(iNX,iX1,iX2,iX3) )
+
+        END IF
 
       END DO
       END DO
@@ -2701,7 +2773,7 @@ integer::ix1,ix2,ix3,inx
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNX, iDim, jDim
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNX, iDim, jDim, iErr(nDOFX)
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: P_K(nDOFX)
     REAL(DP) :: dh1dX1(nDOFX), dh2dX1(nDOFX), dh3dX1(nDOFX), &
@@ -2823,7 +2895,8 @@ integer::ix1,ix2,ix3,inx
              uPF_K(:,iPF_Ne),     &
              G_K(:,iGF_Gm_dd_11), &
              G_K(:,iGF_Gm_dd_22), &
-             G_K(:,iGF_Gm_dd_33) )
+             G_K(:,iGF_Gm_dd_33), &
+             iErr )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -4381,22 +4454,22 @@ integer::ix1,ix2,ix3,inx
       iErr(iNX,iX1,iX2,iX3) = 0
 
       CALL ComputePrimitive_Euler &
-             ( U(iNX,iX1,iX2,iX3,iCF_D ), &
-               U(iNX,iX1,iX2,iX3,iCF_S1), &
-               U(iNX,iX1,iX2,iX3,iCF_S2), &
-               U(iNX,iX1,iX2,iX3,iCF_S3), &
-               U(iNX,iX1,iX2,iX3,iCF_E ), &
-               U(iNX,iX1,iX2,iX3,iCF_Ne), &
+             ( U(   iNX,iX1,iX2,iX3,iCF_D ), &
+               U(   iNX,iX1,iX2,iX3,iCF_S1), &
+               U(   iNX,iX1,iX2,iX3,iCF_S2), &
+               U(   iNX,iX1,iX2,iX3,iCF_S3), &
+               U(   iNX,iX1,iX2,iX3,iCF_E ), &
+               U(   iNX,iX1,iX2,iX3,iCF_Ne), &
                P(iPF_D ), &
                P(iPF_V1), &
                P(iPF_V2), &
                P(iPF_V3), &
                P(iPF_E ), &
                P(iPF_Ne), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               iErr_Option = iErr(iNX,iX1,iX2,iX3) )
+               G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               iErr(iNX,iX1,iX2,iX3) )
 
       CALL ComputePressureFromPrimitive &
              ( P(iPF_D), P(iPF_E), P(iPF_Ne), Pressure )
@@ -4900,7 +4973,7 @@ integer::ix1,ix2,ix3,inx
 
     IF( ANY( iErr .NE. 0 ) )THEN
 
-      PRINT*, 'Geometry'
+      WRITE(*,*) 'ERROR: ComputeIncrement_Geometry_Relativistic'
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -4909,8 +4982,7 @@ integer::ix1,ix2,ix3,inx
 
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
-          PRINT*, 'iNX, iX1, iX2, iX3, iErr = ', &
-            iNX, iX1, iX2, iX3, iErr(iNX,iX1,iX2,iX3)
+          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
 
           CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
 
@@ -4920,7 +4992,6 @@ integer::ix1,ix2,ix3,inx
       END DO
       END DO
       END DO
-stop
 
     END IF
 
