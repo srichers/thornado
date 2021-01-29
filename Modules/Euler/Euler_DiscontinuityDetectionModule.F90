@@ -366,8 +366,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iNX, iX1, iX2, iX3, iXX1, iXX2, iXX3
-    LOGICAL  :: CornerCell
+    INTEGER  :: iNX, iX1, iX2, iX3
     REAL(DP) :: GradP, DivV
     INTEGER  :: nK(3), nK_X, nCF_X, nGF_X
 
@@ -412,6 +411,10 @@ CONTAINS
                                   iX_B1(2):iX_E1(2), &
                                   iX_B1(3):iX_E1(3))
 
+    INTEGER :: iX1arr(            iX_B1(1):iX_E1(1))
+    INTEGER :: iX2arr(            iX_B1(2):iX_E1(2))
+    INTEGER :: iX3arr(            iX_B1(3):iX_E1(3))
+
     CALL TimersStart_Euler( Timer_Euler_ShockDetector )
 
     CALL TimersStart_Euler( Timer_Euler_CopyIn )
@@ -419,11 +422,13 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D ) &
-    !$OMP MAP( alloc: SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, iErr )
+    !$OMP MAP( alloc: SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
+    !$OMP             iX1arr, iX2arr, iX3arr, iErr )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D ) &
-    !$ACC CREATE(     SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, iErr )
+    !$ACC CREATE(     SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
+    !$ACC             iX1arr, iX2arr, iX3arr, iErr )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CopyIn )
@@ -438,10 +443,31 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_Permute )
 
 #if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( iX_B1, iX_E1, iX1arr, iX2arr, iX3arr )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+#endif
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      iX1arr(iX1) = iX1
+      iX2arr(iX2) = iX2
+      iX3arr(iX3) = iX3
+
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B1, iX_E1, SqrtGm, G_X, U_X, G, U, D )
+    !$ACC PRESENT( iX_B1, iX_E1, SqrtGm, G_X, U_X, G, U, D, &
+    !$ACC          iX1arr, iX2arr, iX3arr )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4)
 #endif
@@ -454,11 +480,8 @@ CONTAINS
       D(iNX,iX1,iX2,iX3,iDF_Sh_X2) = Zero
       D(iNX,iX1,iX2,iX3,iDF_Sh_X3) = Zero
 
-      iXX1 = iX1
-      iXX2 = iX2
-      iXX3 = iX3
-
-      IF( IsCornerCell( iX_B1, iX_E1, iXX1, iXX2, iXX3 ) ) CYCLE
+      IF( IsCornerCell &
+            ( iX_B1, iX_E1, iX1arr(iX1), iX2arr(iX2), iX3arr(iX3) ) ) CYCLE
 
       SqrtGm(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_SqrtGm)
 
@@ -517,7 +540,8 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( iX_B1, iX_E1, GK, UK, Vol, PK, PrK, VK, iErr )
+    !$ACC PRESENT( iX_B1, iX_E1, GK, UK, Vol, PK, PrK, VK, &
+    !$ACC          iX1arr, iX2arr, iX3arr, iErr )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
@@ -527,11 +551,8 @@ CONTAINS
 
       iErr(iX1,iX2,iX3) = 0
 
-      iXX1 = iX1
-      iXX2 = iX2
-      iXX3 = iX3
-
-      IF( IsCornerCell( iX_B1, iX_E1, iXX1, iXX2, iXX3 ) ) CYCLE
+      IF( IsCornerCell &
+            ( iX_B1, iX_E1, iX1arr(iX1), iX2arr(iX2), iX3arr(iX3) ) ) CYCLE
 
       GK(1,iX1,iX2,iX3) = GK(1,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
       GK(2,iX1,iX2,iX3) = GK(2,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
@@ -669,12 +690,14 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    D, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
-    !$OMP               SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol )
+    !$OMP               SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
+    !$OMP               iX1arr, iX2arr, iX3arr )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      D, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
-    !$ACC               SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol )
+    !$ACC               SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
+    !$ACC               iX1arr, iX2arr, iX3arr )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CopyOut )
@@ -686,12 +709,6 @@ CONTAINS
       DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
       DO iX1 = iX_B1(1), iX_E1(1)
-
-        iXX1 = iX1
-        iXX2 = iX2
-        iXX3 = iX3
-
-        IF( IsCornerCell( iX_B1, iX_E1, iXX1, iXX2, iXX3 ) ) CYCLE
 
         IF( iErr(iX1,iX2,iX3) .NE. 0 )THEN
 
