@@ -18,7 +18,7 @@ VPATH += $(THORNADO_DIR)/SandBox/Interface_FLASH
 
 .DEFAULT_GOAL := all
 
-all: DeleptonizationWave DeleptonizationWave1D
+all: DeleptonizationWave DeleptonizationWave1D DeleptonizationWave1D_Old
 
 DeleptonizationWave: \
 	$(weaklib) \
@@ -26,7 +26,7 @@ DeleptonizationWave: \
 	InitializationModule.o \
 	TimeSteppingModule_Flash.o \
 	DeleptonizationWave.o
-	$(FLINKER) $(FLAGS) -o DeleptonizationWave_$(MACHINE) \
+	$(FLINKER) $(FLAGS) -o DeleptonizationWave_GPU_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
@@ -40,12 +40,26 @@ DeleptonizationWave1D: \
 	InitializationModule.o \
 	TimeSteppingModule_Flash.o \
 	DeleptonizationWave1D.o
-	$(FLINKER) $(FLAGS) -o DeleptonizationWave1D_$(MACHINE) \
+	$(FLINKER) $(FLAGS) -o DeleptonizationWave1D_GPU_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
 	TimeSteppingModule_Flash.o \
 	DeleptonizationWave1D.o \
+	$(LIBRARIES)
+
+DeleptonizationWave1D_Old: \
+	$(weaklib) \
+	$(thornado) \
+	InitializationModule.o \
+	TimeSteppingModule_Flash.o \
+	DeleptonizationWave1D_Old.o
+	$(FLINKER) $(FLAGS) -o DeleptonizationWave1D_CPU_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	InitializationModule.o \
+	TimeSteppingModule_Flash.o \
+	DeleptonizationWave1D_Old.o \
 	$(LIBRARIES)
 
 clean:
@@ -109,12 +123,41 @@ DeleptonizationWave1D.o: \
   InputOutputModuleHDF.o \
   Euler_UtilitiesModule.o \
   TwoMoment_ClosureModule.o \
-  TwoMoment_PositivityLimiterModule_Old.o \
+  TwoMoment_PositivityLimiterModule.o \
   DeleptonizationWave1D.f90
+
+DeleptonizationWave1D_Old.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  TimersModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleE_Lagrange.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryComputationModuleE.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  OpacityModule_TABLE.o \
+  TimeSteppingModule_Flash.o \
+  InitializationModule.o \
+  InputOutputModuleHDF.o \
+  Euler_UtilitiesModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_PositivityLimiterModule_Old.o \
+  DeleptonizationWave1D_Old.F90
 
 InitializationModule.o: \
   KindModule.o \
   UnitsModule.o \
+  UtilitiesModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModule.o \
@@ -123,6 +166,20 @@ InitializationModule.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   EquationOfStateModule_TABLE.o \
+  NeutrinoOpacitiesComputationModule.o \
   TwoMoment_UtilitiesModule.o \
   InitializationModule.f90
 
+TimeSteppingModule_Flash.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TimersModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_DiscretizationModule_Streaming.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
+  TwoMoment_PositivityLimiterModule.o \
+  PhysicalConstantsModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  TimeSteppingModule_Flash.F90
