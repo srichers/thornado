@@ -366,7 +366,8 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iNX, iX1, iX2, iX3
+    INTEGER  :: iNX, iX1, iX2, iX3, iXX1, iXX2, iXX3
+    LOGICAL  :: CornerCell
     REAL(DP) :: GradP, DivV
     INTEGER  :: nK(3), nK_X, nCF_X, nGF_X
 
@@ -453,7 +454,11 @@ CONTAINS
       D(iNX,iX1,iX2,iX3,iDF_Sh_X2) = Zero
       D(iNX,iX1,iX2,iX3,iDF_Sh_X3) = Zero
 
-      IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+      iXX1 = iX1
+      iXX2 = iX2
+      iXX3 = iX3
+
+      IF( IsCornerCell( iX_B1, iX_E1, iXX1, iXX2, iXX3 ) ) CYCLE
 
       SqrtGm(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_SqrtGm)
 
@@ -522,7 +527,11 @@ CONTAINS
 
       iErr(iX1,iX2,iX3) = 0
 
-      IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+      iXX1 = iX1
+      iXX2 = iX2
+      iXX3 = iX3
+
+      IF( IsCornerCell( iX_B1, iX_E1, iXX1, iXX2, iXX3 ) ) CYCLE
 
       GK(1,iX1,iX2,iX3) = GK(1,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
       GK(2,iX1,iX2,iX3) = GK(2,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
@@ -678,7 +687,11 @@ CONTAINS
       DO iX2 = iX_B1(2), iX_E1(2)
       DO iX1 = iX_B1(1), iX_E1(1)
 
-        IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+        iXX1 = iX1
+        iXX2 = iX2
+        iXX3 = iX3
+
+        IF( IsCornerCell( iX_B1, iX_E1, iXX1, iXX2, iXX3 ) ) CYCLE
 
         IF( iErr(iX1,iX2,iX3) .NE. 0 )THEN
 

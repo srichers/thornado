@@ -113,10 +113,10 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  ProgramName = 'Advection'
+!!$  ProgramName = 'Advection'
 !!$  ProgramName = 'Advection2D'
 !!$  ProgramName = 'RiemannProblem'
-!!$  ProgramName = 'RiemannProblem2D'
+  ProgramName = 'RiemannProblem2D'
 !!$  ProgramName = 'RiemannProblemSpherical'
 !!$  ProgramName = 'SedovTaylorBlastWave'
 !!$  ProgramName = 'KelvinHelmholtzInstability'
@@ -134,12 +134,12 @@ PROGRAM ApplicationDriver
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
-      bcX = [ 1, 0, 0 ]
+      bcX = [ 1, 1, 1 ]
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 64, 1, 1 ]
-      swX = [ 1, 0, 0 ]
+      nX  = [ 64, 64, 64 ]
+      swX = [ 1, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -227,7 +227,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem2D' )
 
-      RiemannProblemName = 'IsolatedShock'
+      RiemannProblemName = 'DzB2002'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
@@ -235,7 +235,7 @@ PROGRAM ApplicationDriver
 
           Gamma = 5.0_DP / 3.0_DP
           t_end = 0.4_DP
-          bcX   = [ 2, 2, 0 ]
+          bcX   = [ 2, 2, 2 ]
 
         CASE( 'IsolatedShock' )
 
@@ -247,8 +247,8 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 64, 64, 1 ]
-      swX = [ 1, 1, 0 ]
+      nX  = [ 32, 32, 32 ]
+      swX = [ 1, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -432,11 +432,11 @@ PROGRAM ApplicationDriver
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
-    CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-    CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+!!$    CALL ComputeFromConserved_Euler_Relativistic &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+!!$
+!!$    CALL WriteFieldsHDF &
+!!$         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
   ELSE
 
@@ -446,7 +446,7 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  iCycleD = 1
+  iCycleD = 10
   iCycleW = 1; dt_wrt = -1.0_DP
 !!$  dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
 
@@ -461,8 +461,8 @@ PROGRAM ApplicationDriver
   t_wrt = t + dt_wrt
   wrt   = .FALSE.
 
-  CALL InitializeTally_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+!!$  CALL InitializeTally_Euler_Relativistic &
+!!$         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -503,41 +503,41 @@ PROGRAM ApplicationDriver
            ( t, dt, uGF, uCF, uDF, &
              ComputeIncrement_Euler_DG_Explicit )
 
-    IF( iCycleW .GT. 0 )THEN
-
-      IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
-        wrt = .TRUE.
-
-    ELSE
-
-      IF( t + dt .GT. t_wrt )THEN
-
-        t_wrt = t_wrt + dt_wrt
-        wrt   = .TRUE.
-
-      END IF
-
-    END IF
-
-    IF( wrt )THEN
-
-      CALL TimersStart_Euler( Timer_Euler_InputOutput )
-
-      CALL ComputeFromConserved_Euler_Relativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-      CALL WriteFieldsHDF &
-             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
-
-      CALL ComputeTally_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
-
-      wrt = .FALSE.
-
-      CALL TimersStop_Euler( Timer_Euler_InputOutput )
-
-    END IF
-exit
+!!$    IF( iCycleW .GT. 0 )THEN
+!!$
+!!$      IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
+!!$        wrt = .TRUE.
+!!$
+!!$    ELSE
+!!$
+!!$      IF( t + dt .GT. t_wrt )THEN
+!!$
+!!$        t_wrt = t_wrt + dt_wrt
+!!$        wrt   = .TRUE.
+!!$
+!!$      END IF
+!!$
+!!$    END IF
+!!$
+!!$    IF( wrt )THEN
+!!$
+!!$      CALL TimersStart_Euler( Timer_Euler_InputOutput )
+!!$
+!!$      CALL ComputeFromConserved_Euler_Relativistic &
+!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+!!$
+!!$      CALL WriteFieldsHDF &
+!!$             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+!!$
+!!$      CALL ComputeTally_Euler_Relativistic &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+!!$
+!!$      wrt = .FALSE.
+!!$
+!!$      CALL TimersStop_Euler( Timer_Euler_InputOutput )
+!!$
+!!$    END IF
+if(icycle.eq.2)exit
   END DO
 
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
@@ -553,10 +553,10 @@ exit
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-  CALL ComputeTally_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+!!$  CALL ComputeTally_Euler_Relativistic &
+!!$         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
-  CALL FinalizeTally_Euler_Relativistic
+!!$  CALL FinalizeTally_Euler_Relativistic
 
   CALL FinalizeFluid_SSPRK
 
