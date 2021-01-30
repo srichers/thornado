@@ -368,7 +368,7 @@ CONTAINS
 
     INTEGER  :: iNX, iX1, iX2, iX3
     REAL(DP) :: GradP, DivV
-    INTEGER  :: nK(3), nK_X, nCF_X, nGF_X
+    INTEGER  :: nK_X, nCF_X, nGF_X
 
     REAL(DP) :: SqrtGm(1:nDOFX,   iX_B1(1):iX_E1(1), &
                                   iX_B1(2):iX_E1(2), &

@@ -409,6 +409,12 @@ CONTAINS
 
     IsCornerCell = .FALSE.
 
+#ifdef USE_AMREX_TRUE
+
+    RETURN
+
+#endif
+
     IF     ( nDimsX .EQ. 1 )THEN
 
       RETURN

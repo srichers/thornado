@@ -138,6 +138,8 @@ CONTAINS
         CALL MF_ApplyBoundaryConditions_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL DetectShocks_Euler'
+
         CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
         CALL thornado2amrex_Euler( nDF, iX_B1, iX_E1, uDF, D )
