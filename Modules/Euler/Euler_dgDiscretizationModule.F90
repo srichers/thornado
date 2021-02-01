@@ -2423,127 +2423,13 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
-real(dp)::temp(ndofx,ix_b1(1):ix_e1(1),ix_b1(2):ix_e1(2),ix_b1(3):ix_e1(3),ncf)
-integer::ix1,ix2,ix3,inx
-
 #ifdef HYDRO_RELATIVISTIC
 
-!!$temp=du
 !!$    CALL ComputeIncrement_Geometry_Relativistic_CPU &
 !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-!!$OPEN(100,FILE='cc_D')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_D)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='cc_S1')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_S1)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='cc_E')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_E)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$du=temp
-!!$    CALL ComputeIncrement_Geometry_Relativistic_GPU &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-!!$OPEN(100,FILE='gc_D')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_D)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='gc_S1')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_S1)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='gc_E')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_E)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
 
     CALL ComputeIncrement_Geometry_Relativistic_GPU &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-!!$!$ACC UPDATE HOST( dU )
-!!$OPEN(100,FILE='gg_D')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_D)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='gg_S1')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_S1)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
-!!$
-!!$OPEN(100,FILE='gg_E')
-!!$do ix3=ix_b1(3),ix_e1(3)
-!!$do ix2=ix_b1(3),ix_e1(3)
-!!$do ix1=ix_b1(3),ix_e1(3)
-!!$do inx=1,ndofx
-!!$WRITE(100,'(ES24.16E3)') dU(inx,ix1,ix2,ix3,iCF_E)
-!!$enddo
-!!$enddo
-!!$enddo
-!!$enddo
-!!$CLOSE(100)
 
 #else
 
