@@ -417,6 +417,13 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_ShockDetector )
 
+    nK_X = PRODUCT( [ iX_E1(1) - iX_B1(1) + 1, &
+                      iX_E1(2) - iX_B1(2) + 1, &
+                      iX_E1(3) - iX_B1(3) + 1 ] )
+
+    nCF_X = nCF * nK_X
+    nGF_X = 7   * nK_X
+
     CALL TimersStart_Euler( Timer_Euler_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
@@ -431,36 +438,51 @@ CONTAINS
     !$ACC             iX1arr, iX2arr, iX3arr, iErr )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( iX_B1, iX_E1, iX1arr )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD
+#endif
+     DO iX1 = iX_B1(1), iX_E1(1)
 
-    nK_X = PRODUCT( [ iX_E1(1) - iX_B1(1) + 1, &
-                      iX_E1(2) - iX_B1(2) + 1, &
-                      iX_E1(3) - iX_B1(3) + 1 ] )
+       iX1arr(iX1) = iX1
 
-    nCF_X = nCF * nK_X
-    nGF_X = 7   * nK_X
-
-    CALL TimersStart_Euler( Timer_Euler_Permute )
+     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( iX_B1, iX_E1, iX1arr, iX2arr, iX3arr )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( iX_B1, iX_E1, iX2arr )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP PARALLEL DO SIMD
 #endif
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
+     DO iX2 = iX_B1(2), iX_E1(2)
 
-      iX1arr(iX1) = iX1
-      iX2arr(iX2) = iX2
-      iX3arr(iX3) = iX3
+       iX2arr(iX2) = iX2
 
-    END DO
-    END DO
-    END DO
+     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( iX_B1, iX_E1, iX3arr )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD
+#endif
+     DO iX3 = iX_B1(3), iX_E1(3)
+
+       iX3arr(iX3) = iX3
+
+     END DO
+
+    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+
+    CALL TimersStart_Euler( Timer_Euler_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -479,9 +501,6 @@ CONTAINS
       D(iNX,iX1,iX2,iX3,iDF_Sh_X1) = Zero
       D(iNX,iX1,iX2,iX3,iDF_Sh_X2) = Zero
       D(iNX,iX1,iX2,iX3,iDF_Sh_X3) = Zero
-
-      IF( IsCornerCell &
-            ( iX_B1, iX_E1, iX1arr(iX1), iX2arr(iX2), iX3arr(iX3) ) ) CYCLE
 
       SqrtGm(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_SqrtGm)
 
@@ -549,10 +568,10 @@ CONTAINS
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
 
-      iErr(iX1,iX2,iX3) = 0
-
       IF( IsCornerCell &
             ( iX_B1, iX_E1, iX1arr(iX1), iX2arr(iX2), iX3arr(iX3) ) ) CYCLE
+
+      iErr(iX1,iX2,iX3) = 0
 
       GK(1,iX1,iX2,iX3) = GK(1,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
       GK(2,iX1,iX2,iX3) = GK(2,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
@@ -709,6 +728,9 @@ CONTAINS
       DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
       DO iX1 = iX_B1(1), iX_E1(1)
+
+        IF( IsCornerCell &
+              ( iX_B1, iX_E1, iX1arr(iX1), iX2arr(iX2), iX3arr(iX3) ) ) CYCLE
 
         IF( iErr(iX1,iX2,iX3) .NE. 0 )THEN
 
