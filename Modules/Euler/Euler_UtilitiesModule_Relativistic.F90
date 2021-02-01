@@ -107,13 +107,13 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       GF_Gm11, GF_Gm22, GF_Gm33
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
-    INTEGER,  INTENT(inout) :: &
+    INTEGER,  INTENT(inout), OPTIONAL :: &
       iErr
 
     REAL(DP) :: S, q, r, k, z0
@@ -157,13 +157,13 @@ CONTAINS
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm11, GF_Gm22, GF_Gm33, iErr )
 
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       GF_Gm11(:), GF_Gm22(:), GF_Gm33(:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:)
-    INTEGER,  INTENT(inout) :: &
+    INTEGER,  INTENT(inout), OPTIONAL :: &
       iErr(:)
 
     INTEGER :: iNX
