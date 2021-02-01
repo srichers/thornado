@@ -57,9 +57,6 @@ MODULE TwoMoment_PositivityLimiterModule
   PUBLIC :: ApplyPositivityLimiter_TwoMoment
   PUBLIC :: TallyPositivityLimiter_TwoMoment
 
-  LOGICAL               :: Debug = .false.
-  LOGICAL               :: Debug2 = .true.
-
   CHARACTER(256)        :: TallyFileName
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: UsePositivityLimiterTally
@@ -632,8 +629,6 @@ CONTAINS
     REAL(DP) :: U_K_G2 (     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
     REAL(DP) :: U_K_G3 (     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
-    IF( Debug ) WRITE(*,*) 'Calling GPU Positivity Limiter'
-
     IF( nDOF == 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
@@ -705,17 +700,9 @@ CONTAINS
 
       END DO
 
-   END DO
-   END DO
-   END DO
-
-    IF( Debug ) THEN
-    WRITE(*,*) 'Geometry Factor Quadrature Points 1'
-
-    WRITE(*,'(A,8ES12.4)') 'Q1', GX_Q_hd1(:,1,1,1)**2
-    WRITE(*,'(A,8ES12.4)') 'Q2', GX_Q_hd2(:,1,1,1)**2
-    WRITE(*,'(A,8ES12.4)') 'Q3', GX_Q_hd3(:,1,1,1)**2
-    END IF
+    END DO
+    END DO
+    END DO
 
     CALL TimersStart( Timer_PL_Points )
 
@@ -750,14 +737,6 @@ CONTAINS
    END DO
    END DO
 
-    IF( Debug ) THEN
-    WRITE(*,*) 'Geometry Factor Point Values 2'
-
-    WRITE(*,'(A,8ES12.4)') 'P1', GX_P_Gmdd11(:,1,1,1)
-    WRITE(*,'(A,8ES12.4)') 'P2', GX_P_Gmdd22(:,1,1,1)
-    WRITE(*,'(A,8ES12.4)') 'P3', GX_P_Gmdd33(:,1,1,1)
-    END IF
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
@@ -790,11 +769,6 @@ CONTAINS
     END DO
     END DO
 
-    IF( Debug )THEN
-      WRITE(*,'(A,8ES12.4)') 'Tau_Q', Tau_Q(:,1,1,1,1)
-      WRITE(*,'(A,8ES12.4)') 'Tau_K', SUM( Weights_q(:) * Tau_Q(:,1,1,1,1) )
-    END IF
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
@@ -823,14 +797,6 @@ CONTAINS
     END DO
     END DO
 
-    IF( Debug )THEN
-      WRITE(*,'(A,8ES12.4)') 'U_Q_N ', U_Q_N(:,1,1,1,1,1)
-      WRITE(*,'(A,8ES12.4)') 'U_Q_G1', U_Q_G1(:,1,1,1,1,1)
-      WRITE(*,'(A,8ES12.4)') 'U_Q_G2', U_Q_G2(:,1,1,1,1,1)
-      WRITE(*,'(A,8ES12.4)') 'U_Q_G3', U_Q_G3(:,1,1,1,1,1)
-    END IF
-  
-
     ! --- Point Values ---
 
     CALL TimersStart( Timer_PL_Points )
@@ -842,30 +808,16 @@ CONTAINS
 
     CALL TimersStop( Timer_PL_Points )
 
-    IF( Debug )THEN
-      WRITE(*,'(A,12ES12.4)') 'U_P_N ', U_P_N(:,1,1,1,1,1)
-      WRITE(*,'(A,12ES12.4)') 'U_P_G1', U_P_G1(:,1,1,1,1,1)
-      WRITE(*,'(A,12ES12.4)') 'U_P_G2', U_P_G2(:,1,1,1,1,1)
-      WRITE(*,'(A,12ES12.4)') 'U_P_G3', U_P_G3(:,1,1,1,1,1)
-    END IF
-
     ! --- Cell Average ---
 
     CALL TimersStart( Timer_PL_CellAverage )
 
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, U_Q_N , U_K_N  )
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, U_Q_G1, U_K_G1 )
-    CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, U_Q_G2, U_K_G3 )
+    CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, U_Q_G2, U_K_G2 )
     CALL ComputeCellAverage( iZ_B0, iZ_E0, Tau_Q, U_Q_G3, U_K_G3 )
 
     CALL TimersStop( Timer_PL_CellAverage )
-
-    IF( Debug )THEN
-      WRITE(*,'(A,8ES12.4)') 'U_K ', U_K_N(1,1,1,1,1),  &
-                                     U_K_G1(1,1,1,1,1), &
-                                     U_K_G2(1,1,1,1,1), &
-                                     U_K_G3(1,1,1,1,1)
-    END IF
 
     ! --- Ensure Bounded Density ---
 
@@ -1049,18 +1001,6 @@ CONTAINS
 
                 IF ( Gam < Min_2 ) THEN
 
-!                  CALL SolveTheta_Bisection &
-!                        ( U_P_N  (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-!                          U_P_G1 (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-!                          U_P_G2 (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-!                          U_P_G3 (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-!                          U_K_N  (   iZ1,iZ2,iZ3,iZ4,iS),   &
-!                          U_K_G1 (   iZ1,iZ2,iZ3,iZ4,iS),   &
-!                          U_K_G2 (   iZ1,iZ2,iZ3,iZ4,iS),   &
-!                          U_K_G3 (   iZ1,iZ2,iZ3,iZ4,iS),   &
-!                          1.0_DP, 1.0_DP, 1.0_DP, Theta_P,  &
-!                          iError (iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
-
                   CALL SolveTheta_Bisection &
                         ( U_P_N  (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
                           U_P_G1 (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
@@ -1075,19 +1015,6 @@ CONTAINS
                           GX_P_Gmdd33(iP_X,iZ2,iZ3,iZ4),    &
                           Theta_P,                          &
                           iError (iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
-
-                  IF( Debug2 .and. iZ1 == 1 .and. iZ2 == 1 )THEN
-                    WRITE(*,'(A,5I5,ES12.4)') '@', iP_Z, iZ1,iZ2,iZ3,iZ4, Theta_P
-                    WRITE(*,'(A,8ES12.4)') 'U_K ',  U_K_N  (iZ1,iZ2,iZ3,iZ4,iS), &
-                                                   U_K_G1 (iZ1,iZ2,iZ3,iZ4,iS), &
-                                                   U_K_G3 (iZ1,iZ2,iZ3,iZ4,iS), &
-                                                   U_K_G3 (iZ1,iZ2,iZ3,iZ4,iS)
-                    WRITE(*,'(A,8ES12.4)') 'U_PP', U_P_N  (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-                                                   U_P_G1 (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-                                                   U_P_G2 (iP_Z,iZ1,iZ2,iZ3,iZ4,iS), &
-                                                   U_P_G3 (iP_Z,iZ1,iZ2,iZ3,iZ4,iS)
-                    WRITE(*,'(A,8ES12.4)') 'Theta_P', Theta_P
-                  END IF
 
                   Theta_2 = MIN( Theta_2, Theta_P )
 
@@ -1238,15 +1165,6 @@ CONTAINS
 
                 U(:,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS) = U_Q_N (:,iZ1,iZ2,iZ3,iZ4,iS)
 
-              END IF
-
-              IF( Debug2 .and. ANY(NegativeStates(:,iZ1,iZ2,iZ3,iZ4,iS)) )THEN
-                WRITE(*,'(A,8I5)') '@', iZ1, iZ2, iZ3, iZ4, iS
-                WRITE(*,'(A,8ES12.4)') 'New U_N ', U(1:nDOF,iZ1,iZ2,iZ3,iZ4,1,iS)
-                WRITE(*,'(A,8ES12.4)') 'New U_G1', U(1:nDOF,iZ1,iZ2,iZ3,iZ4,2,iS)
-                WRITE(*,'(A,8ES12.4)') 'New U_G2', U(1:nDOF,iZ1,iZ2,iZ3,iZ4,3,iS)
-                WRITE(*,'(A,8ES12.4)') 'New U_G3', U(1:nDOF,iZ1,iZ2,iZ3,iZ4,4,iS)
-                IF( Debug ) STOP ' END ONE'
               END IF
 
             END DO
