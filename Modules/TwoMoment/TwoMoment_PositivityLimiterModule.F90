@@ -658,20 +658,22 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: iZ_B0, iZ_E0, iX_B0, iX_E0, NegativeStates, &
-    !$OMP          U, iError, MinTheta_1, MinTheta_2 ) &
-    !$OMP MAP( alloc: Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
-    !$OMP             GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33, &
-    !$OMP             U_P_N, U_P_G1, U_P_G2, U_P_G3, &
-    !$OMP             U_K_N, U_K_G1, U_K_G2, U_K_G3, &
+    !$OMP          U, iError, MinTheta_1, MinTheta_2 )         &
+    !$OMP MAP( alloc: Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3,    &
+    !$OMP             GX_Q_hd1, GX_Q_hd2, GX_Q_hd3,            &
+    !$OMP             GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33,   &
+    !$OMP             U_P_N, U_P_G1, U_P_G2, U_P_G3,           &
+    !$OMP             U_K_N, U_K_G1, U_K_G2, U_K_G3,           &
     !$OMP             Min_K_S, Max_K_S, Theta_1_S, Min_Gam_S, Theta_2_S )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( iZ_B0, iZ_E0, iX_B0, iX_E0, NegativeStates, &
-    !$ACC         U, iError, MinTheta_1, MinTheta_2 ) &
-    !$ACC CREATE( Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
-    !$ACC         GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33, &
-    !$ACC         U_P_N, U_P_G1, U_P_G2, U_P_G3, &
-    !$ACC         U_K_N, U_K_G1, U_K_G2, U_K_G3, &
+    !$ACC         U, iError, MinTheta_1, MinTheta_2 )         &
+    !$ACC CREATE( Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3,       &
+    !$ACC         GX_Q_hd1, GX_Q_hd2, GX_Q_hd3,               &
+    !$ACC         GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33,      &
+    !$ACC         U_P_N, U_P_G1, U_P_G2, U_P_G3,              &
+    !$ACC         U_K_N, U_K_G1, U_K_G2, U_K_G3,              &
     !$ACC         Min_K_S, Max_K_S, Theta_1_S, Min_Gam_S, Theta_2_S )
 #endif
 
@@ -703,6 +705,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    ! --- Point Values ---
 
     CALL TimersStart( Timer_PL_Points )
 
@@ -738,12 +742,15 @@ CONTAINS
    END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iNode )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( iNode )                      &
     !$ACC PRESENT( Tau_Q, GX, GE, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iNode )
 #endif
 
     DO iS = 1, nSpecies
@@ -958,11 +965,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P ) &
+    !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P, iP_X ) &
     !$OMP REDUCTION( min: MinTheta_2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( Gam, Min_Gam, Theta_2, Theta_P ) &
+    !$ACC PRIVATE( Gam, Min_Gam, Theta_2, Theta_P, iP_X ) &
     !$ACC REDUCTION( min: MinTheta_2 ) &
     !$ACC PRESENT( U_P_N, U_P_G1, U_P_G2, U_P_G3, &
     !$ACC          GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33, &
@@ -972,7 +979,7 @@ CONTAINS
     !$ACC          MinTheta_2, iError, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P ) &
+    !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P, iP_X ) &
     !$OMP REDUCTION( min: MinTheta_2 )
 #endif
     DO iS = 1, nSpecies
@@ -1188,20 +1195,22 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: U, iError, MinTheta_1, MinTheta_2 ) &
-    !$OMP MAP( release: iZ_B0, iZ_E0, NegativeStates, &
-    !$OMP               Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
-    !$OMP               GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33, &
-    !$OMP               U_P_N, U_P_G1, U_P_G2, U_P_G3, &
-    !$OMP               U_K_N, U_K_G1, U_K_G2, U_K_G3, &
+    !$OMP MAP( release: iZ_B0, iZ_E0, iX_B0, iX_E0, NegativeStates, &
+    !$OMP               Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3,       &
+    !$OMP               GX_Q_hd1, GX_Q_hd2, GX_Q_hd3,               &
+    !$OMP               GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33,      &
+    !$OMP               U_P_N, U_P_G1, U_P_G2, U_P_G3,              &
+    !$OMP               U_K_N, U_K_G1, U_K_G2, U_K_G3,              &
     !$OMP               Min_K_S, Max_K_S, Theta_1_S, Min_Gam_S, Theta_2_S )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( U, iError, MinTheta_1, MinTheta_2 ) &
-    !$ACC DELETE( iZ_B0, iZ_E0, NegativeStates, &
-    !$ACC         Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
-    !$ACC         GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33, &
-    !$ACC         U_P_N, U_P_G1, U_P_G2, U_P_G3, &
-    !$ACC         U_K_N, U_K_G1, U_K_G2, U_K_G3, &
+    !$ACC COPYOUT( U, iError, MinTheta_1, MinTheta_2 )        &
+    !$ACC DELETE( iZ_B0, iZ_E0, iX_B0, iX_E0, NegativeStates, &
+    !$ACC         Tau_Q, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3,       &
+    !$ACC         GX_Q_hd1, GX_Q_hd2, GX_Q_hd3,               &
+    !$ACC         GX_P_Gmdd11, GX_P_Gmdd22, GX_P_Gmdd33,      &
+    !$ACC         U_P_N, U_P_G1, U_P_G2, U_P_G3,              &
+    !$ACC         U_K_N, U_K_G1, U_K_G2, U_K_G3,              &
     !$ACC         Min_K_S, Max_K_S, Theta_1_S, Min_Gam_S, Theta_2_S )
 #endif
 
