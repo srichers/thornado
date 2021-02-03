@@ -38,8 +38,8 @@ MODULE TwoMoment_PositivityLimiterModule_Old
   PUBLIC :: TallyPositivityLimiter_TwoMoment
 
   CHARACTER(256)        :: TallyFileName
-  LOGICAL               :: Debug = .true.
-  LOGICAL               :: Debug2 = .true.
+  LOGICAL               :: Debug = .false.
+  LOGICAL               :: Debug2 = .false.
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: UsePositivityLimiterTally
   INTEGER,    PARAMETER :: nPS = 9  ! Number of Positive Point Sets

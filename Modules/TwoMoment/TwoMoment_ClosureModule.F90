@@ -321,15 +321,15 @@ CONTAINS
       = Third + Two * Third * ( One - D ) * ( One - Two * D ) &
           * ClosurePolynomial_ME_CB( FF / MAX( One - D, SqrtTiny ) )
 
-    IF( (ABS(D) > D) .OR. (D > One) ) THEN
-      WRITE(*,*)
-      WRITE(*,'(A,2ES18.6)') &
-      'WARN! EddingtonFactor_Scalar: D, FF', D, FF
-      EddingtonFactor = SQRT( D )
-      WRITE(*,'(A,ES18.6)') 'RETURN EddingtonFactor = NAN', EddingtonFactor
-      WRITE(*,*)
-      STOP 
-    END IF
+!!    IF( (ABS(D) > D) .OR. (D > One) ) THEN
+!!      WRITE(*,*)
+!!      WRITE(*,'(A,2ES18.6)') &
+!!      'WARN! EddingtonFactor_Scalar: D, FF', D, FF
+!!      EddingtonFactor = SQRT( D )
+!!      WRITE(*,'(A,ES18.6)') 'RETURN EddingtonFactor = NAN', EddingtonFactor
+!!      WRITE(*,*)
+!!      STOP
+!!    END IF
 
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_BL
 
