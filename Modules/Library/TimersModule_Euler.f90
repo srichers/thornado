@@ -22,12 +22,20 @@ MODULE TimersModule_Euler
 
   ! --- DG discretization ---
 
+  REAL(DP), PUBLIC :: Timer_Euler_DG
   REAL(DP), PUBLIC :: Timer_Euler_Increment
   REAL(DP), PUBLIC :: Timer_Euler_Divergence
   REAL(DP), PUBLIC :: Timer_Euler_SurfaceTerm
   REAL(DP), PUBLIC :: Timer_Euler_VolumeTerm
+  REAL(DP), PUBLIC :: Timer_Euler_ComputePrimitive
   REAL(DP), PUBLIC :: Timer_Euler_Geometry
   REAL(DP), PUBLIC :: Timer_Euler_Gravity
+  REAL(DP), PUBLIC :: Timer_Euler_DG_CopyIn
+  REAL(DP), PUBLIC :: Timer_Euler_DG_CopyOut
+  REAL(DP), PUBLIC :: Timer_Euler_DG_Permute
+  REAL(DP), PUBLIC :: Timer_Euler_DG_Interpolate
+  REAL(DP), PUBLIC :: Timer_Euler_DG_ErrorCheck
+
 
   ! --- Data Manipulation ---
 
@@ -56,6 +64,8 @@ MODULE TimersModule_Euler
   PUBLIC :: TimersStop_Euler
   PUBLIC :: TimersWtime_Euler
 
+  REAL(DP), PARAMETER :: Hundred = 100.0_DP
+
 
 CONTAINS
 
@@ -64,7 +74,9 @@ CONTAINS
 
     IF( .NOT. TimeIt_Euler ) RETURN
 
-    Timer_Euler_Program         = Zero
+    Timer_Euler_Program = Zero
+
+    CALL TimersStart_Euler( Timer_Euler_Program )
 
     Timer_Euler_Initialize      = Zero
     Timer_Euler_ComputeTimeStep = Zero
@@ -72,12 +84,19 @@ CONTAINS
     Timer_Euler_InputOutput     = Zero
     Timer_Euler_Finalize        = Zero
 
-    Timer_Euler_Increment   = Zero
-    Timer_Euler_Divergence  = Zero
-    Timer_Euler_SurfaceTerm = Zero
-    Timer_Euler_VolumeTerm  = Zero
-    Timer_Euler_Geometry    = Zero
-    Timer_Euler_Gravity     = Zero
+    Timer_Euler_DG               = Zero
+    Timer_Euler_Increment        = Zero
+    Timer_Euler_Divergence       = Zero
+    Timer_Euler_SurfaceTerm      = Zero
+    Timer_Euler_VolumeTerm       = Zero
+    Timer_Euler_ComputePrimitive = Zero
+    Timer_Euler_Geometry         = Zero
+    Timer_Euler_Gravity          = Zero
+    Timer_Euler_DG_CopyIn        = Zero
+    Timer_Euler_DG_CopyOut       = Zero
+    Timer_Euler_DG_Permute       = Zero
+    Timer_Euler_DG_Interpolate   = Zero
+    Timer_Euler_DG_ErrorCheck    = Zero
 
     Timer_Euler_CopyIn      = Zero
     Timer_Euler_CopyOut     = Zero
@@ -92,8 +111,6 @@ CONTAINS
 
     Timer_GravitySolver            = Zero
     Timer_Euler_BoundaryConditions = Zero
-
-    CALL TimersStart_Euler( Timer_Euler_Program )
 
   END SUBROUTINE InitializeTimers_Euler
 
@@ -111,8 +128,8 @@ CONTAINS
 
     CHARACTER(6)  :: Label_Level1 = '(8x,A)'
 
-    CHARACTER(64) :: TimeL1 = '(10x,A,ES13.6E3,A,F6.3,A)'
-    CHARACTER(64) :: TimeL2 = '(12x,A,ES13.6E3,A,F6.3,A,F6.3,A)'
+    CHARACTER(64) :: TimeL1 = '(10x,A,ES10.3E3,A,F6.3,A)'
+    CHARACTER(64) :: TimeL2 = '(12x,A,ES10.3E3,A,F6.3,A,F6.3,A)'
 
     IF( .NOT. TimeIt_Euler ) RETURN
 
@@ -156,37 +173,37 @@ CONTAINS
 
       WRITE(*,'(10x,A,ES13.6E3,A,F7.3,A)') &
         'Timers = ', TotalTime, ' s = ', &
-        100.0_DP * TotalTime / Timer_Euler_Program, ' %'
+        Hundred * TotalTime / Timer_Euler_Program, ' %'
       WRITE(*,*)
 
       WRITE(*,TRIM(TimeL1)) &
         'Initialize:        ', &
         Timer_Euler_Initialize, ' s = ', &
-        100.0_DP &
+        Hundred &
         * Timer_Euler_Initialize / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeL1)) &
         'Compute Time-Step: ', &
         Timer_Euler_ComputeTimeStep, ' s = ', &
-        100.0_DP &
+        Hundred &
         * Timer_Euler_ComputeTimeStep / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeL1)) &
         'Update Fluid:      ', &
         Timer_Euler_UpdateFluid, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_UpdateFluid / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeL1)) &
         'Input/Output:      ', &
         Timer_Euler_InputOutput, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_InputOutput / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeL1)) &
         'Finalize:          ', &
         Timer_Euler_Finalize, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_Finalize / Timer_Euler_Program, ' %'
 
     END IF
@@ -195,40 +212,113 @@ CONTAINS
 
       WRITE(*,*)
       WRITE(*,TRIM(Label_Level1)) 'DG discretization'
-      WRITE(*,TRIM(Label_Level1)) '---------------- '
+      WRITE(*,TRIM(Label_Level1)) '-----------------'
       WRITE(*,*)
 
       WRITE(*,TRIM(TimeL1)) &
-        'Divergence: ', &
+        'dgDiscretization: ', &
+        Timer_Euler_DG, ' s = ', &
+        Hundred &
+          * Timer_Euler_DG / Timer_Euler_Program, ' %'
+      WRITE(*,*)
+
+      WRITE(*,TRIM(TimeL1)) &
+        '  Increment:    ', &
+        Timer_Euler_Increment, ' s = ', &
+        Hundred &
+          * Timer_Euler_Increment / Timer_Euler_Program, ' %'
+
+      WRITE(*,TRIM(TimeL1)) &
+        '  Geometry:     ', &
+        Timer_Euler_Geometry, ' s = ', &
+        Hundred &
+          * Timer_Euler_Geometry / Timer_Euler_Program, ' %'
+
+      WRITE(*,TRIM(TimeL1)) &
+        '  Gravity:      ', &
+        Timer_Euler_Gravity, ' s = ', &
+        Hundred &
+          * Timer_Euler_Gravity / Timer_Euler_Program, ' %'
+
+      WRITE(*,TRIM(TimeL1)) &
+        '  Divergence:   ', &
         Timer_Euler_Divergence, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_Divergence / Timer_Euler_Program, ' %'
       WRITE(*,*)
 
       WRITE(*,TRIM(TimeL2)) &
-        'Surface Term: ', &
+        '  Surface Term: ', &
         Timer_Euler_SurfaceTerm, ' s = ', &
-        100.0_DP &
-          * Timer_Euler_SurfaceTerm / Timer_Euler_Program, ' %'
+        Hundred &
+          * Timer_Euler_SurfaceTerm / Timer_Euler_Program, ' % = ', &
+        Hundred &
+          * Timer_Euler_SurfaceTerm / Timer_Euler_Divergence, ' %'
 
       WRITE(*,TRIM(TimeL2)) &
-        'Volume Term:  ', &
+        '  Volume Term:  ', &
         Timer_Euler_VolumeTerm, ' s = ', &
-        100.0_DP &
-          * Timer_Euler_VolumeTerm / Timer_Euler_Program, ' %'
+        Hundred &
+          * Timer_Euler_VolumeTerm / Timer_Euler_Program, ' % = ', &
+        Hundred &
+          * Timer_Euler_VolumeTerm / Timer_Euler_Divergence, ' %'
 
       WRITE(*,*)
-      WRITE(*,TRIM(TimeL1)) &
-        'Geometry: ', &
-        Timer_Euler_Geometry, ' s = ', &
-        100.0_DP &
-          * Timer_Euler_Geometry / Timer_Euler_Program, ' %'
+
+      WRITE(*,TRIM(TimeL2)) &
+        '    ComputePrimitive: ', &
+        Timer_Euler_ComputePrimitive, ' s = ', &
+        Hundred &
+          * Timer_Euler_ComputePrimitive / Timer_Euler_Program, ' % = ', &
+        Hundred &
+          * Timer_Euler_ComputePrimitive &
+          / ( Timer_Euler_SurfaceTerm + Timer_Euler_VolumeTerm ), ' %'
+
+      WRITE(*,*)
 
       WRITE(*,TRIM(TimeL1)) &
-        'Gravity:  ', &
-        Timer_Euler_Gravity, ' s = ', &
-        100.0_DP &
-          * Timer_Euler_Gravity / Timer_Euler_Program, ' %'
+        '  CopyIn:       ', &
+        Timer_Euler_DG_CopyIn, ' s = ', &
+        Hundred &
+          * Timer_Euler_DG_CopyIn / Timer_Euler_Program, ' %'
+
+      WRITE(*,TRIM(TimeL1)) &
+        '  CopyOut:      ', &
+        Timer_Euler_DG_CopyOut, ' s = ', &
+        Hundred &
+          * Timer_Euler_DG_CopyOut / Timer_Euler_Program, ' %'
+
+      WRITE(*,TRIM(TimeL1)) &
+        '  Interpolate:  ', &
+        Timer_Euler_DG_Interpolate, ' s = ', &
+        Hundred &
+          * Timer_Euler_DG_Interpolate / Timer_Euler_Program, ' %'
+
+      WRITE(*,TRIM(TimeL1)) &
+        '  Permute:      ', &
+        Timer_Euler_DG_Permute, ' s = ', &
+        Hundred &
+          * Timer_Euler_DG_Permute / Timer_Euler_Program, ' %'
+
+      Timer_Euler_CopyIn &
+        = Timer_Euler_CopyIn + Timer_Euler_DG_CopyIn
+
+      Timer_Euler_CopyOut &
+        = Timer_Euler_CopyOut + Timer_Euler_DG_CopyOut
+
+      Timer_Euler_Interpolate &
+        = Timer_Euler_Interpolate + Timer_Euler_DG_Interpolate
+
+      Timer_Euler_Permute &
+        = Timer_Euler_Permute + Timer_Euler_DG_Permute
+
+      WRITE(*,*)
+
+      WRITE(*,TRIM(TimeL1)) &
+        '  Error Check:  ', &
+        Timer_Euler_DG_ErrorCheck, ' s = ', &
+        Hundred &
+          * Timer_Euler_DG_ErrorCheck / Timer_Euler_Program, ' %'
 
       WRITE(*,*)
       WRITE(*,TRIM(Label_Level1)) 'Data Manipulation'
@@ -238,25 +328,25 @@ CONTAINS
       WRITE(*,TRIM(TimeL1)) &
         'CopyIn:      ', &
         Timer_Euler_CopyIn, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_CopyIn / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeL1)) &
         'CopyOut:     ', &
         Timer_Euler_CopyOut, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_CopyOut / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeL1)) &
         'Permute:     ', &
         Timer_Euler_Permute, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_Permute / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeL1)) &
         'Interpolate: ', &
         Timer_Euler_Permute, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_Permute / Timer_Euler_Program, ' %'
 
       WRITE(*,*)
@@ -268,33 +358,33 @@ CONTAINS
       WRITE(*,TRIM(TimeL1)) &
         'Positivity-Limiter: ', &
         Timer_Euler_PositivityLimiter, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_PositivityLimiter / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeL1)) &
         'Slope-Limiter:      ', &
         Timer_Euler_SlopeLimiter, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_SlopeLimiter / Timer_Euler_Program, ' %'
 
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        'Troubled-Cell Indicator:      ', &
+      WRITE(*,TRIM(TimeL1)) &
+        '  Troubled-Cell Indicator:      ', &
         Timer_Euler_TroubledCellIndicator, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_TroubledCellIndicator / Timer_Euler_Program, ' %'
 
-      WRITE(*,TRIM(TimeL2)) &
-        'Shock Detector:               ', &
+      WRITE(*,TRIM(TimeL1)) &
+        '  Shock Detector:               ', &
         Timer_Euler_ShockDetector, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_ShockDetector / Timer_Euler_Program, ' %'
 
-      WRITE(*,TRIM(TimeL2)) &
-        'Characteristic Decomposition: ', &
+      WRITE(*,TRIM(TimeL1)) &
+        '  Characteristic Decomposition: ', &
         Timer_Euler_CharacteristicDecomposition, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_CharacteristicDecomposition / Timer_Euler_Program, ' %'
 
       WRITE(*,*)
@@ -305,13 +395,13 @@ CONTAINS
       WRITE(*,TRIM(TimeL1)) &
         'GravitySolver:       ', &
         Timer_GravitySolver, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_GravitySolver / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeL1)) &
         'Boundary Conditions: ', &
         Timer_Euler_BoundaryConditions, ' s = ', &
-        100.0_DP &
+        Hundred &
           * Timer_Euler_BoundaryConditions / Timer_Euler_Program, ' %'
 
     END IF
