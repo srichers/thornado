@@ -41,7 +41,7 @@ PROGRAM ApplicationDriver
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
-    WriteFieldsHDF, &
+    WriteFieldsHDF, FileNumber, &
     ReadFieldsHDF
   USE FluidFieldsModule, ONLY: &
     uCF, &
@@ -116,9 +116,9 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  ProgramName = 'Advection'
+!!$  ProgramName = 'Advection'
 !!$  ProgramName = 'Advection2D'
-!!$  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblem'
 !!$  ProgramName = 'RiemannProblem2D'
 !!$  ProgramName = 'RiemannProblemSpherical'
 !!$  ProgramName = 'SedovTaylorBlastWave'
@@ -137,12 +137,12 @@ PROGRAM ApplicationDriver
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
-      bcX = [ 1, 1, 1 ]
+      bcX = [ 1, 0, 0 ]
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 32, 32, 32 ]
-      swX = [ 1, 1, 1 ]
+      nX  = [ 32, 1, 1 ]
+      swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -171,7 +171,7 @@ PROGRAM ApplicationDriver
 
           Gamma = 5.0_DP / 3.0_DP
           t_end = 0.2_DP
-          bcX   = [ 2, 0, 0 ]
+          bcX   = [ 2, 2, 2 ]
 
         CASE( 'IsolatedShock' )
 
@@ -223,8 +223,8 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 128, 1, 1 ]
-      swX = [ 1, 0, 0 ]
+      nX  = [ 32, 32, 32 ]
+      swX = [ 1, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -434,17 +434,22 @@ PROGRAM ApplicationDriver
 
 !    IF( RestartFileNumber .LT. 0 )THEN
 
+print*, 'CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL'
+
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
 !      CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
 !             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 !
-!  !!$    CALL ComputeFromConserved_Euler_Relativistic &
-!  !!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-!  !!$
-!  !!$    CALL WriteFieldsHDF &
-!  !!$         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+    CALL ComputeFromConserved_Euler_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+#if defined(THORNADO_OACC)
+FileNumber = 1
+#endif
+    CALL WriteFieldsHDF &
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 !
 !    ELSE
 !

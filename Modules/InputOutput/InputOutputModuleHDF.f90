@@ -60,7 +60,7 @@ MODULE InputOutputModuleHDF
     RadiationSuffix = 'RadiationFields'
   CHARACTER(9),  PARAMETER :: &
     OpacitySuffix   = 'Opacities'
-  INTEGER :: FileNumber = 0
+  INTEGER,PUBLIC :: FileNumber = 0
 
   ! --- Accretion Shock Diagnostics ---
   CHARACTER(25), PARAMETER :: &
