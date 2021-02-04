@@ -75,6 +75,7 @@ OBJS = \
        EquationOfStateModule_TABLE.o \
        EquationOfStateModule_IDEAL.o \
        TwoMoment_ClosureModule.o \
+       TwoMoment_PositivityLimiterModule.o \
        TwoMoment_PositivityLimiterModule_Old.o \
        TwoMoment_DiscretizationModule_Streaming.o \
        TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
