@@ -11,8 +11,6 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     nNodes, &
     nNodesX, &
     bcX
-  USE LinearAlgebraModule, ONLY: &
-    MatrixVectorMultiply
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
     NodeNumberTableX
@@ -26,10 +24,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     IndPX_Q
   USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModal_Fluid, &
-    MapModalToNodal_Fluid, &
-    Kij_X
-  USE PolynomialBasisModuleX_Legendre, ONLY: &
-    MassPX
+    MapModalToNodal_Fluid
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
@@ -44,12 +39,6 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, &
-    iCF_D, &
-    iCF_S1, &
-    iCF_S2, &
-    iCF_S3, &
-    iCF_E, &
-    iCF_Ne, &
     iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyInnerBC_Euler, &
@@ -61,8 +50,6 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
     FinalizeTroubledCellIndicator_Euler, &
-    UseTroubledCellIndicator, &
-    LimiterThreshold, &
     DetectTroubledCells_Euler
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
@@ -76,9 +63,12 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   PUBLIC :: FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
   PUBLIC :: ApplySlopeLimiter_Euler_Relativistic_IDEAL
 
+  REAL(DP), PUBLIC :: LimiterThreshold
+
   LOGICAL      :: UseSlopeLimiter
   LOGICAL      :: UseCharacteristicLimiting
   LOGICAL      :: UseConservativeCorrection
+  LOGICAL      :: UseTroubledCellIndicator
   CHARACTER(4) :: SlopeLimiterMethod
 
   ! --- WENO Limiter ---
@@ -91,17 +81,6 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   REAL(DP) :: LimiterThresholdParameter
   REAL(DP) :: I_6x6(1:6,1:6)
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET &
-  !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
-  !$OMP     UseConservativeCorrection, &
-  !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6 )
-#elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE &
-  !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
-  !$ACC     UseConservativeCorrection, &
-  !$ACC     BetaTVD, BetaTVB, SlopeTolerance, I_6x6 )
-#endif
 
 CONTAINS
 
@@ -179,9 +158,9 @@ CONTAINS
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(A)') &
-        '    INFO: Slope Limiter (Euler, Relativistic, IDEAL)'
+        '    INFO: InitializeSlopeLimiter_Euler_Relativistic_IDEAL'
       WRITE(*,'(A)') &
-        '    ------------------------------------------------'
+        '    -----------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
@@ -214,24 +193,14 @@ CONTAINS
         UseConservativeCorrection
     END IF
 
+    CALL InitializeTroubledCellIndicator_Euler &
+           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
+             LimiterThreshold_Option = LimiterThreshold )
+
     I_6x6 = Zero
     DO i = 1, 6
       I_6x6(i,i) = One
     END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO &
-    !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
-    !$OMP     UseConservativeCorrection, &
-    !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6 )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE &
-    !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
-    !$ACC     UseConservativeCorrection, &
-    !$ACC     BetaTVD, BetaTVB, SlopeTolerance, I_6x6 )
-#endif
-
-    CALL InitializeTroubledCellIndicator_Euler
 
     IF( TRIM( SlopeLimiterMethod ).EQ. 'WENO' )THEN
 
@@ -242,58 +211,58 @@ CONTAINS
   END SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL
 
 
-!!$  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-!!$    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
-!!$
-!!$    INTEGER,  INTENT(in)           :: &
-!!$      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-!!$    REAL(DP), INTENT(in)           :: &
-!!$      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-!!$    REAL(DP), INTENT(inout)        :: &
-!!$      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-!!$    REAL(DP), INTENT(inout)        :: &
-!!$      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-!!$    LOGICAL,  INTENT(in), OPTIONAL :: &
-!!$      SuppressBC_Option
-!!$    INTEGER,  INTENT(in), OPTIONAL :: &
-!!$      iApplyBC_Option(3)
-!!$
-!!$    SELECT CASE( TRIM( SlopeLimiterMethod ) )
-!!$
-!!$      CASE( 'TVD' )
-!!$
-!!$        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
-!!$               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-!!$                 SuppressBC_Option, iApplyBC_Option )
-!!$
-!!$      CASE( 'WENO' )
-!!$
-!!$        IF( UseCharacteristicLimiting )THEN
-!!$
-!!$          CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_Characteristic &
-!!$                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-!!$                   SuppressBC_Option, iApplyBC_Option )
-!!$
-!!$        ELSE
-!!$
-!!$          CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_ComponentWise &
-!!$                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-!!$                   SuppressBC_Option, iApplyBC_Option )
-!!$
-!!$        END IF
-!!$
-!!$      CASE DEFAULT
-!!$
-!!$        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
-!!$               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-!!$                 SuppressBC_Option, iApplyBC_Option )
-!!$
-!!$    END SELECT
-!!$
-!!$  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL
-
-
   SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
+
+    INTEGER,  INTENT(in)           :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)           :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout)        :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout)        :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      SuppressBC_Option
+    INTEGER,  INTENT(in), OPTIONAL :: &
+      iApplyBC_Option(3)
+
+    SELECT CASE( TRIM( SlopeLimiterMethod ) )
+
+      CASE( 'TVD' )
+
+        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+                 SuppressBC_Option, iApplyBC_Option )
+
+      CASE( 'WENO' )
+
+        IF( UseCharacteristicLimiting )THEN
+
+          CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_Characteristic &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+                   SuppressBC_Option, iApplyBC_Option )
+
+        ELSE
+
+          CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_ComponentWise &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+                   SuppressBC_Option, iApplyBC_Option )
+
+        END IF
+
+      CASE DEFAULT
+
+        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+                 SuppressBC_Option, iApplyBC_Option )
+
+    END SELECT
+
+  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL
+
+
+  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -314,7 +283,7 @@ CONTAINS
                                 iX_B0(3):iX_E0(3))
     LOGICAL  :: SuppressBC
     LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
-    INTEGER  :: iNX, iX1, iX2, iX3, iCF
+    INTEGER  :: iX1, iX2, iX3, iCF
     INTEGER  :: iApplyBC(3)
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
@@ -328,43 +297,13 @@ CONTAINS
     REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
     REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
     REAL(DP) :: V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
-
-! --- GPU
-
-    INTEGER  :: nX_K, nX1_K, nCF_K, nCF_K_X1
-
-    REAL(DP) :: SqrtGm(1:nDOFX      ,iX_B0(1):iX_E0(1), &
-                                     iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3))
-    REAL(DP) :: Vol(                 iX_B0(1):iX_E0(1), &
-                                     iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3))
-    REAL(DP) :: U_X   (1:nDOFX,1:nCF,iX_B0(1):iX_E0(1), &
-                                     iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3))
-    REAL(DP) :: U_K   (1:nCF        ,iX_B0(1):iX_E0(1), &
-                                     iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3))
-
-    REAL(DP) :: U_X1  (1:nDOFX,1:nCF,iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3), &
-                                     iX_B1(1):iX_E1(1))
-    REAL(DP) :: U_K_X1(1:nCF        ,iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3), &
-                                     iX_B1(1):iX_E1(1))
+    REAL(DP) :: U_K(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
-
-    nX_K     = PRODUCT( iX_E0 - iX_B0 + 1 )
-    nX1_K    = PRODUCT( [ iX_E1(1) - iX_B1(1) + 1, &
-                          iX_E0(2) - iX_B0(2) + 1, &
-                          iX_E0(3) - iX_B0(3) + 1 ] )
-    nCF_K    = nCF * nX_K
-    nCF_K_X1 = nCF * nX1_K
 
     iApplyBC = iApplyBC_Euler_Both
     IF( PRESENT( iApplyBC_Option ) ) &
@@ -381,6 +320,8 @@ CONTAINS
     CALL DetectTroubledCells_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
 
+    LimitedCell = .FALSE.
+
     ExcludeInnerGhostCell = .FALSE.
     ExcludeOuterGhostCell = .FALSE.
     IF( ApplyInnerBC_Euler( iApplyBC(1) ) .AND. bcX(1) .NE. 1 ) &
@@ -396,259 +337,303 @@ CONTAINS
     IF( ApplyOuterBC_Euler( iApplyBC(3) ) .AND. bcX(3) .NE. 1 ) &
       ExcludeOuterGhostCell(3) = .TRUE.
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-    !$OMP             ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
-    !$OMP MAP( alloc: SqrtGm, Vol, U_X, U_K, U_X1, U_K_X1  )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-    !$ACC             ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
-    !$ACC CREATE(     SqrtGm, Vol, U_X, U_K, U_X1, U_K_X1  )
-#endif
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, SqrtGm, U_X, G, U )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
-#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, nDOFX
 
-      SqrtGm(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_SqrtGm)
+      IF( ALL( D(:,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) ) CYCLE
 
-      U_X(iNX,iCF_D ,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCF_D ) * SqrtGm(iNX,iX1,iX2,iX3)
-      U_X(iNX,iCF_S1,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCF_S1) * SqrtGm(iNX,iX1,iX2,iX3)
-      U_X(iNX,iCF_S2,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCF_S2) * SqrtGm(iNX,iX1,iX2,iX3)
-      U_X(iNX,iCF_S3,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCF_S3) * SqrtGm(iNX,iX1,iX2,iX3)
-      U_X(iNX,iCF_E ,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCF_E ) * SqrtGm(iNX,iX1,iX2,iX3)
-      U_X(iNX,iCF_Ne,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCF_Ne) * SqrtGm(iNX,iX1,iX2,iX3)
+      dX1 = MeshX(1) % Width(iX1)
+      dX2 = MeshX(2) % Width(iX2)
+      dX3 = MeshX(3) % Width(iX3)
+
+      ! --- Cell Volume ---
+
+      V_K(iX1,iX2,iX3) &
+        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm) )
+
+      ! --- Cell Average of Conserved Fluid ---
+
+      DO iCF = 1, nCF
+
+        U_K(iCF,iX1,iX2,iX3) &
+          = SUM( WeightsX_q * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
+                   * U(:,iX1,iX2,iX3,iCF) ) / V_K(iX1,iX2,iX3)
+
+      END DO
+
+      ! --- Map to Modal Representation ---
+
+      DO iCF = 1, nCF
+
+        CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), &
+                                    U_M(iCF,0,:,iX1,iX2,iX3) )
+
+        ! --- Cell Average of Neighbors in X1 Direction ---
+
+        U_M(iCF,1,1,iX1,iX2,iX3) &
+          = DOT_PRODUCT( WeightsX_q, U(:,iX1-1,iX2,iX3,iCF) )
+
+        U_M(iCF,2,1,iX1,iX2,iX3) &
+          = DOT_PRODUCT( WeightsX_q, U(:,iX1+1,iX2,iX3,iCF) )
+
+        IF( nDimsX .GT. 1 )THEN
+
+          ! --- Cell Average of Neighbors in X2 Direction ---
+
+          U_M(iCF,3,1,iX1,iX2,iX3) &
+            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2-1,iX3,iCF) )
+
+          U_M(iCF,4,1,iX1,iX2,iX3) &
+            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2+1,iX3,iCF) )
+
+        END IF
+
+        IF( nDimsX .GT. 2 )THEN
+
+          ! --- Cell Average of Neighbors in X3 Direction ---
+
+          U_M(iCF,5,1,iX1,iX2,iX3) &
+            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2,iX3-1,iCF) )
+
+          U_M(iCF,6,1,iX1,iX2,iX3) &
+            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2,iX3+1,iCF) )
+
+        END IF
+
+      END DO
+
+      IF( UseCharacteristicLimiting )THEN
+
+        ! --- Cell Average of Geometry (Spatial Metric, Lapse Function,
+        !     and Shift Vector) ---
+
+        G_K(iGF_Gm_dd_11) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_11) )
+        G_K(iGF_Gm_dd_22) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_22) )
+        G_K(iGF_Gm_dd_33) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+        G_K(iGF_SqrtGm  ) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm  ) )
+        G_K(iGF_Alpha   ) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Alpha   ) )
+        G_K(iGF_Beta_1  ) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_1  ) )
+        G_K(iGF_Beta_2  ) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_2  ) )
+        G_K(iGF_Beta_3  ) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_3  ) )
+
+        ! --- Compute Eigenvectors ---
+
+        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
+               ( 1, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X1, invR_X1 )
+
+        IF( nDimsX .GT. 1 )THEN
+
+          CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
+                 ( 2, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X2, invR_X2 )
+
+        END IF
+
+        IF( nDimsX .GT. 2 )THEN
+
+          CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
+                 ( 3, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X3, invR_X3 )
+
+        END IF
+
+      ELSE
+
+        ! --- Componentwise Limiting ---
+
+        R_X1 = I_6x6; invR_X1 = I_6x6
+        R_X2 = I_6x6; invR_X2 = I_6x6
+        R_X3 = I_6x6; invR_X3 = I_6x6
+
+      END IF
+
+      ! --- Compute Limited Slopes ---
+
+      a = MATMUL( invR_X1, U_M(:,0,2,iX1,iX2,iX3) )
+
+      IF     ( iX1 .EQ. iX_B0(1) .AND. ExcludeInnerGhostCell(1) )THEN
+
+        c = BetaTVD * MATMUL( invR_X1, ( U_M(:,2,1,iX1,iX2,iX3) &
+                                           - U_M(:,0,1,iX1,iX2,iX3) ) )
+        b = c
+
+      ELSE IF( iX1 .EQ. iX_E0(1) .AND. ExcludeOuterGhostCell(1) )THEN
+
+        b = BetaTVD * MATMUL( invR_X1, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                           - U_M(:,1,1,iX1,iX2,iX3) ) )
+        c = b
+
+      ELSE
+
+        b = BetaTVD * MATMUL( invR_X1, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                           - U_M(:,1,1,iX1,iX2,iX3) ) )
+        c = BetaTVD * MATMUL( invR_X1, ( U_M(:,2,1,iX1,iX2,iX3) &
+                                           - U_M(:,0,1,iX1,iX2,iX3) ) )
+
+      END IF
+
+      dU(:,1) = MinModB( a, b, c, dX1, BetaTVB )
+
+      IF( nDimsX .GT. 1 )THEN
+
+        a = MATMUL( invR_X2, U_M(:,0,3,iX1,iX2,iX3) )
+
+        IF     ( iX2 .EQ. iX_B0(2) .AND. ExcludeInnerGhostCell(2) )THEN
+
+          c = BetaTVD * MATMUL( invR_X2, ( U_M(:,4,1,iX1,iX2,iX3) &
+                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
+          b = c
+
+        ELSE IF( iX2 .EQ. iX_E0(2) .AND. ExcludeOuterGhostCell(2) )THEN
+
+          b = BetaTVD * MATMUL( invR_X2, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                             - U_M(:,3,1,iX1,iX2,iX3) ) )
+          c = b
+
+        ELSE
+
+          b = BetaTVD * MATMUL( invR_X2, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                             - U_M(:,3,1,iX1,iX2,iX3) ) )
+          c = BetaTVD * MATMUL( invR_X2, ( U_M(:,4,1,iX1,iX2,iX3) &
+                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
+
+        END IF
+
+        dU(:,2) = MinModB( a, b, c, dX2, BetaTVB )
+
+      END IF
+
+      IF( nDimsX .GT. 2 )THEN
+
+        a = MATMUL( invR_X3, U_M(:,0,4,iX1,iX2,iX3) )
+
+        IF     ( iX3 .EQ. iX_B0(3) .AND. ExcludeInnerGhostCell(3) )THEN
+
+          c = BetaTVD * MATMUL( invR_X3, ( U_M(:,6,1,iX1,iX2,iX3) &
+                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
+          b = c
+
+        ELSE IF( iX3 .EQ. iX_E0(3) .AND. ExcludeOuterGhostCell(3) )THEN
+
+          b = BetaTVD * MATMUL( invR_X3, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                             - U_M(:,5,1,iX1,iX2,iX3) ) )
+          c = b
+
+        ELSE
+
+          b = BetaTVD * MATMUL( invR_X3, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                             - U_M(:,5,1,iX1,iX2,iX3) ) )
+          c = BetaTVD * MATMUL( invR_X3, ( U_M(:,6,1,iX1,iX2,iX3) &
+                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
+
+        END IF
+
+        dU(:,3) = MinModB( a, b, c, dX3, BetaTVB )
+
+      END IF
+
+      IF( UseCharacteristicLimiting )THEN
+
+        ! --- Transform Back from Characteristic Variables ---
+
+        dU(:,1) = MATMUL( R_X1, dU(:,1) )
+
+        IF( nDimsX .GT. 1 )THEN
+
+          dU(:,2) = MATMUL( R_X2, dU(:,2) )
+
+        END IF
+
+        IF( nDimsX .GT. 2 )THEN
+
+          dU(:,3) = MATMUL( R_X3, dU(:,3) )
+
+        END IF
+
+      END IF
+
+      ! --- Compare Limited Slopes to Original Slopes ---
+
+      DO iCF = 1, nCF
+
+        SlopeDifference(iCF) = ABS( U_M(iCF,0,2,iX1,iX2,iX3) - dU(iCF,1) )
+
+        IF( nDimsX .GT. 1 )THEN
+
+          SlopeDifference(iCF) &
+            = MAX( SlopeDifference(iCF), &
+                   ABS( U_M(iCF,0,3,iX1,iX2,iX3) - dU(iCF,2) ) )
+
+        END IF
+
+        IF( nDimsX .GT. 2 )THEN
+
+          SlopeDifference(iCF) &
+            = MAX( SlopeDifference(iCF), &
+                   ABS( U_M(iCF,0,4,iX1,iX2,iX3) - dU(iCF,3) ) )
+
+        END IF
+
+      END DO
+
+      ! --- Replace Slopes and Discard High-Order Components ---
+      ! --- if Limited Slopes Deviate too Much from Original ---
+
+      DO iCF = 1, nCF
+
+        IF( SlopeDifference(iCF) &
+              .GT. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
+
+          U_M(iCF,0,2:nDOFX,iX1,iX2,iX3) = Zero
+
+          U_M(iCF,0,2,iX1,iX2,iX3) = dU(iCF,1)
+
+          IF( nDimsX .GT. 1 ) U_M(iCF,0,3,iX1,iX2,iX3) = dU(iCF,2)
+
+          IF( nDimsX .GT. 2 ) U_M(iCF,0,4,iX1,iX2,iX3) = dU(iCF,3)
+
+          LimitedCell(iCF,iX1,iX2,iX3) = .TRUE.
+
+        END IF
+
+      END DO
 
     END DO
     END DO
     END DO
-    END DO
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B0, iX_E0, iX_B1, iX_E1, U_X1,  U )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
-#endif
-    DO iX1 = iX_B1(1), iX_E1(1)
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iCF = 1, nCF
-    DO iNX = 1, nDOFX
-
-      U_X1(iNX,iCF,iX2,iX3,iX1) = U(iNX,iX1,iX2,iX3,iCF)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    ! --- Compute volumes of compute cells ---
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nX_K , One, SqrtGm   , nDOFX, &
-             WeightsX_q, 1, Zero, Vol  , 1 )
-
-    ! --- Compute cell integrals ---
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nCF_K   , One, U_X , nDOFX, &
-             WeightsX_q, 1, Zero, U_K   , 1 )
-
-    CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nCF_K_X1, One, U_X1, nDOFX, &
-             WeightsX_q, 1, Zero, U_K_X1, 1 )
-
-    ! --- Form cell averages ---
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, U_K, Vol )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
-#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iCF = 1, nCF
 
-      U_K(iCF,iX1,iX2,iX3) = U_K(iCF,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      DO iCF = 1, nCF
+
+        IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+
+          CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), &
+                                      U_M(iCF,0,:,iX1,iX2,iX3) )
+
+        END IF
+
+      END DO
 
     END DO
     END DO
     END DO
-    END DO
 
-!!$    DO iX3 = iX_B0(3), iX_E0(3)
-!!$    DO iX2 = iX_B0(2), iX_E0(2)
-!!$    DO iX1 = iX_B0(1), iX_E0(1)
-!!$
-!!$      IF( ALL( D(:,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) ) CYCLE
-!!$
-!!$      dX1 = MeshX(1) % Width(iX1)
-!!$      dX2 = MeshX(2) % Width(iX2)
-!!$      dX3 = MeshX(3) % Width(iX3)
-!!$
-!!$      ! --- Cell Volume ---
-!!$
-!!$      V_K(iX1,iX2,iX3) &
-!!$        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm) )
-!!$
-!!$      ! --- Cell Average of Conserved Fluid ---
-!!$
-!!$      DO iCF = 1, nCF
-!!$
-!!$        U_K(iCF,iX1,iX2,iX3) &
-!!$          = SUM( WeightsX_q * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-!!$                   * U(:,iX1,iX2,iX3,iCF) ) / V_K(iX1,iX2,iX3)
-!!$
-!!$      END DO
-!!$
-!!$      ! --- Map to Modal Representation ---
-!!$
-!!$      DO iCF = 1, nCF
-!!$
-!!$        CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), &
-!!$                                    U_M(iCF,0,:,iX1,iX2,iX3) )
-!!$
-!!$        ! --- Cell Average of Neighbors in X1 Direction ---
-!!$
-!!$        U_M(iCF,1,1,iX1,iX2,iX3) &
-!!$          = DOT_PRODUCT( WeightsX_q, U(:,iX1-1,iX2,iX3,iCF) )
-!!$
-!!$        U_M(iCF,2,1,iX1,iX2,iX3) &
-!!$          = DOT_PRODUCT( WeightsX_q, U(:,iX1+1,iX2,iX3,iCF) )
-!!$
-!!$      END DO
-!!$
-!!$      R_X1 = I_6x6; invR_X1 = I_6x6
-!!$      R_X2 = I_6x6; invR_X2 = I_6x6
-!!$      R_X3 = I_6x6; invR_X3 = I_6x6
-!!$
-!!$      ! --- Compute Limited Slopes ---
-!!$
-!!$      a = MATMUL( invR_X1, U_M(:,0,2,iX1,iX2,iX3) )
-!!$
-!!$      IF     ( iX1 .EQ. iX_B0(1) .AND. ExcludeInnerGhostCell(1) )THEN
-!!$
-!!$        c = BetaTVD * MATMUL( invR_X1, ( U_M(:,2,1,iX1,iX2,iX3) &
-!!$                                           - U_M(:,0,1,iX1,iX2,iX3) ) )
-!!$        b = c
-!!$
-!!$      ELSE IF( iX1 .EQ. iX_E0(1) .AND. ExcludeOuterGhostCell(1) )THEN
-!!$
-!!$        b = BetaTVD * MATMUL( invR_X1, ( U_M(:,0,1,iX1,iX2,iX3) &
-!!$                                           - U_M(:,1,1,iX1,iX2,iX3) ) )
-!!$        c = b
-!!$
-!!$      ELSE
-!!$
-!!$        b = BetaTVD * MATMUL( invR_X1, ( U_M(:,0,1,iX1,iX2,iX3) &
-!!$                                           - U_M(:,1,1,iX1,iX2,iX3) ) )
-!!$        c = BetaTVD * MATMUL( invR_X1, ( U_M(:,2,1,iX1,iX2,iX3) &
-!!$                                           - U_M(:,0,1,iX1,iX2,iX3) ) )
-!!$
-!!$      END IF
-!!$
-!!$      dU(:,1) = MinModB( a, b, c, dX1, BetaTVB )
-!!$
-!!$      ! --- Compare Limited Slopes to Original Slopes ---
-!!$
-!!$      DO iCF = 1, nCF
-!!$
-!!$        SlopeDifference(iCF) = ABS( U_M(iCF,0,2,iX1,iX2,iX3) - dU(iCF,1) )
-!!$
-!!$      END DO
-!!$
-!!$      ! --- Replace Slopes and Discard High-Order Components ---
-!!$      ! --- if Limited Slopes Deviate too Much from Original ---
-!!$
-!!$      DO iCF = 1, nCF
-!!$
-!!$        LimitedCell(iCF,iX1,iX2,iX3) = .FALSE.
-!!$
-!!$        IF( SlopeDifference(iCF) &
-!!$              .GT. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
-!!$
-!!$          U_M(iCF,0,2:nDOFX,iX1,iX2,iX3) = Zero
-!!$
-!!$          U_M(iCF,0,2,iX1,iX2,iX3) = dU(iCF,1)
-!!$
-!!$          IF( nDimsX .GT. 1 ) U_M(iCF,0,3,iX1,iX2,iX3) = dU(iCF,2)
-!!$
-!!$          IF( nDimsX .GT. 2 ) U_M(iCF,0,4,iX1,iX2,iX3) = dU(iCF,3)
-!!$
-!!$          LimitedCell(iCF,iX1,iX2,iX3) = .TRUE.
-!!$
-!!$        END IF
-!!$
-!!$      END DO
-!!$
-!!$    END DO
-!!$    END DO
-!!$    END DO
-!!$
-!!$    DO iX3 = iX_B0(3), iX_E0(3)
-!!$    DO iX2 = iX_B0(2), iX_E0(2)
-!!$    DO iX1 = iX_B0(1), iX_E0(1)
-!!$
-!!$      DO iCF = 1, nCF
-!!$
-!!$        IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
-!!$
-!!$          CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), &
-!!$                                      U_M(iCF,0,:,iX1,iX2,iX3) )
-!!$
-!!$        END IF
-!!$
-!!$      END DO
-!!$
-!!$    END DO
-!!$    END DO
-!!$    END DO
-!!$
-!!$    CALL ApplyConservativeCorrection &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    U ) &
-    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, D, &
-    !$OMP               ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
-    !$OMP               SqrtGm, Vol, U_X, U_K, U_X1, U_K_X1 )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC COPYOUT(      U ) &
-    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, D, &
-    !$ACC               ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
-    !$ACC               SqrtGm, Vol, U_X, U_K, U_X1, U_K_X1 )
-#endif
+    CALL ApplyConservativeCorrection &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
     CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
 
-  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL
+  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD
 
 
   SUBROUTINE InitializeSlopeLimiter_Euler_WENO
