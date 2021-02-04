@@ -3,7 +3,7 @@ MODULE TimersModule_Euler
   USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: &
     I8=>INT64
   USE KindModule, Only: &
-    DP, Zero
+    DP, SqrtTiny
 
   IMPLICIT NONE
   PRIVATE
@@ -74,43 +74,43 @@ CONTAINS
 
     IF( .NOT. TimeIt_Euler ) RETURN
 
-    Timer_Euler_Program = Zero
+    Timer_Euler_Program = SqrtTiny
 
     CALL TimersStart_Euler( Timer_Euler_Program )
 
-    Timer_Euler_Initialize      = Zero
-    Timer_Euler_ComputeTimeStep = Zero
-    Timer_Euler_UpdateFluid     = Zero
-    Timer_Euler_InputOutput     = Zero
-    Timer_Euler_Finalize        = Zero
+    Timer_Euler_Initialize      = SqrtTiny
+    Timer_Euler_ComputeTimeStep = SqrtTiny
+    Timer_Euler_UpdateFluid     = SqrtTiny
+    Timer_Euler_InputOutput     = SqrtTiny
+    Timer_Euler_Finalize        = SqrtTiny
 
-    Timer_Euler_DG               = Zero
-    Timer_Euler_Increment        = Zero
-    Timer_Euler_Divergence       = Zero
-    Timer_Euler_SurfaceTerm      = Zero
-    Timer_Euler_VolumeTerm       = Zero
-    Timer_Euler_ComputePrimitive = Zero
-    Timer_Euler_Geometry         = Zero
-    Timer_Euler_Gravity          = Zero
-    Timer_Euler_DG_CopyIn        = Zero
-    Timer_Euler_DG_CopyOut       = Zero
-    Timer_Euler_DG_Permute       = Zero
-    Timer_Euler_DG_Interpolate   = Zero
-    Timer_Euler_DG_ErrorCheck    = Zero
+    Timer_Euler_DG               = SqrtTiny
+    Timer_Euler_Increment        = SqrtTiny
+    Timer_Euler_Divergence       = SqrtTiny
+    Timer_Euler_SurfaceTerm      = SqrtTiny
+    Timer_Euler_VolumeTerm       = SqrtTiny
+    Timer_Euler_ComputePrimitive = SqrtTiny
+    Timer_Euler_Geometry         = SqrtTiny
+    Timer_Euler_Gravity          = SqrtTiny
+    Timer_Euler_DG_CopyIn        = SqrtTiny
+    Timer_Euler_DG_CopyOut       = SqrtTiny
+    Timer_Euler_DG_Permute       = SqrtTiny
+    Timer_Euler_DG_Interpolate   = SqrtTiny
+    Timer_Euler_DG_ErrorCheck    = SqrtTiny
 
-    Timer_Euler_CopyIn      = Zero
-    Timer_Euler_CopyOut     = Zero
-    Timer_Euler_Permute     = Zero
-    Timer_Euler_Interpolate = Zero
+    Timer_Euler_CopyIn      = SqrtTiny
+    Timer_Euler_CopyOut     = SqrtTiny
+    Timer_Euler_Permute     = SqrtTiny
+    Timer_Euler_Interpolate = SqrtTiny
 
-    Timer_Euler_PositivityLimiter           = Zero
-    Timer_Euler_SlopeLimiter                = Zero
-    Timer_Euler_TroubledCellIndicator       = Zero
-    Timer_Euler_ShockDetector               = Zero
-    Timer_Euler_CharacteristicDecomposition = Zero
+    Timer_Euler_PositivityLimiter           = SqrtTiny
+    Timer_Euler_SlopeLimiter                = SqrtTiny
+    Timer_Euler_TroubledCellIndicator       = SqrtTiny
+    Timer_Euler_ShockDetector               = SqrtTiny
+    Timer_Euler_CharacteristicDecomposition = SqrtTiny
 
-    Timer_GravitySolver            = Zero
-    Timer_Euler_BoundaryConditions = Zero
+    Timer_GravitySolver            = SqrtTiny
+    Timer_Euler_BoundaryConditions = SqrtTiny
 
   END SUBROUTINE InitializeTimers_Euler
 
@@ -247,32 +247,32 @@ CONTAINS
           * Timer_Euler_Divergence / Timer_Euler_Program, ' %'
       WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Surface Term: ', &
-        Timer_Euler_SurfaceTerm, ' s = ', &
-        Hundred &
-          * Timer_Euler_SurfaceTerm / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * Timer_Euler_SurfaceTerm / Timer_Euler_Divergence, ' %'
+     WRITE(*,TRIM(TimeL2)) &
+       '  Surface Term: ', &
+       Timer_Euler_SurfaceTerm, ' s = ', &
+       Hundred &
+         * Timer_Euler_SurfaceTerm / Timer_Euler_Program, ' % = ', &
+       Hundred &
+         * Timer_Euler_SurfaceTerm / Timer_Euler_Divergence, ' %'
 
-      WRITE(*,TRIM(TimeL2)) &
-        '  Volume Term:  ', &
-        Timer_Euler_VolumeTerm, ' s = ', &
-        Hundred &
-          * Timer_Euler_VolumeTerm / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * Timer_Euler_VolumeTerm / Timer_Euler_Divergence, ' %'
+     WRITE(*,TRIM(TimeL2)) &
+       '  Volume Term:  ', &
+       Timer_Euler_VolumeTerm, ' s = ', &
+       Hundred &
+         * Timer_Euler_VolumeTerm / Timer_Euler_Program, ' % = ', &
+       Hundred &
+         * Timer_Euler_VolumeTerm / Timer_Euler_Divergence, ' %'
 
-      WRITE(*,*)
+     WRITE(*,*)
 
-      WRITE(*,TRIM(TimeL2)) &
-        '    ComputePrimitive: ', &
-        Timer_Euler_ComputePrimitive, ' s = ', &
-        Hundred &
-          * Timer_Euler_ComputePrimitive / Timer_Euler_Program, ' % = ', &
-        Hundred &
-          * Timer_Euler_ComputePrimitive &
-          / ( Timer_Euler_SurfaceTerm + Timer_Euler_VolumeTerm ), ' %'
+     WRITE(*,TRIM(TimeL2)) &
+       '    ComputePrimitive: ', &
+       Timer_Euler_ComputePrimitive, ' s = ', &
+       Hundred &
+         * Timer_Euler_ComputePrimitive / Timer_Euler_Program, ' % = ', &
+       Hundred &
+         * Timer_Euler_ComputePrimitive &
+         / ( Timer_Euler_SurfaceTerm + Timer_Euler_VolumeTerm ), ' %'
 
       WRITE(*,*)
 
@@ -408,8 +408,6 @@ CONTAINS
 
     IF( WriteAtIntermediateTime ) &
       CALL TimersStart_Euler( Timer_Euler_Program )
-
-    RETURN
 
   END SUBROUTINE FinalizeTimers_Euler
 

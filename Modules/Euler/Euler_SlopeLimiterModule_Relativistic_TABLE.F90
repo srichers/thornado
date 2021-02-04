@@ -51,6 +51,8 @@ MODULE Euler_SlopeLimiterModule_Relativistic_TABLE
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
     FinalizeTroubledCellIndicator_Euler, &
+    UseTroubledCellIndicator, &
+    LimiterThreshold, &
     DetectTroubledCells_Euler
   USE UnitsModule, ONLY: &
     AtomicMassUnit
@@ -66,12 +68,9 @@ MODULE Euler_SlopeLimiterModule_Relativistic_TABLE
   PUBLIC :: FinalizeSlopeLimiter_Euler_Relativistic_TABLE
   PUBLIC :: ApplySlopeLimiter_Euler_Relativistic_TABLE
 
-  REAL(DP), PUBLIC :: LimiterThreshold
-
   LOGICAL      :: UseSlopeLimiter
   LOGICAL      :: UseCharacteristicLimiting
   LOGICAL      :: UseConservativeCorrection
-  LOGICAL      :: UseTroubledCellIndicator
   CHARACTER(4) :: SlopeLimiterMethod
 
   ! --- TVD Limiter ---
@@ -158,9 +157,9 @@ CONTAINS
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(A)') &
-        '    INFO: InitializeSlopeLimiter_Euler_Relativistic_TABLE'
+        '    INFO: Slope Limiter (Euler, Relativistic, TABLE)'
       WRITE(*,'(A)') &
-        '    -----------------------------------------------------'
+        '    ------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
@@ -193,9 +192,7 @@ CONTAINS
         UseConservativeCorrection
     END IF
 
-    CALL InitializeTroubledCellIndicator_Euler &
-           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
-             LimiterThreshold_Option = LimiterThreshold )
+    CALL InitializeTroubledCellIndicator_Euler
 
     I_6x6 = Zero
     DO i = 1, 6

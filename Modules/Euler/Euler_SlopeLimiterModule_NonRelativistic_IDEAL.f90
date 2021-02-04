@@ -44,6 +44,8 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
     FinalizeTroubledCellIndicator_Euler, &
+    UseTroubledCellIndicator, &
+    LimiterThreshold, &
     DetectTroubledCells_Euler
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
@@ -57,12 +59,9 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   PUBLIC :: FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
   PUBLIC :: ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
 
-  REAL(DP), PUBLIC :: LimiterThreshold
-
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
   LOGICAL  :: UseConservativeCorrection
-  LOGICAL  :: UseTroubledCellIndicator
   LOGICAL  :: Verbose
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
@@ -160,9 +159,7 @@ CONTAINS
         UseConservativeCorrection
     END IF
 
-    CALL InitializeTroubledCellIndicator_Euler &
-           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
-             LimiterThreshold_Option = LimiterThreshold )
+    CALL InitializeTroubledCellIndicator_Euler
 
     I_6x6 = Zero
     DO i = 1, 6

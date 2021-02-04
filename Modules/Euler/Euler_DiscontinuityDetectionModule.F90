@@ -81,30 +81,32 @@ MODULE Euler_DiscontinuityDetectionModule
   REAL(DP), ALLOCATABLE :: WeightsX_X2_P(:), WeightsX_X2_N(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X3_P(:), WeightsX_X3_N(:)
 
-  LOGICAL  :: UseTroubledCellIndicator
-  REAL(DP) :: LimiterThreshold
+  LOGICAL,  PUBLIC :: UseTroubledCellIndicator
+  REAL(DP), PUBLIC :: LimiterThreshold
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET( UseTroubledCellIndicator, LimiterThreshold )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE( UseTroubledCellIndicator, LimiterThreshold )
+#endif
 
 
 CONTAINS
 
 
-  SUBROUTINE InitializeTroubledCellIndicator_Euler &
-    ( UseTroubledCellIndicator_Option, LimiterThreshold_Option )
-
-    LOGICAL,  INTENT(in), OPTIONAL :: UseTroubledCellIndicator_Option
-    REAL(DP), INTENT(in), OPTIONAL :: LimiterThreshold_Option
+  SUBROUTINE InitializeTroubledCellIndicator_Euler
 
     INTEGER  :: iNode, iNodeX1, iNodeX2, iNodeX3
     INTEGER  :: jNode, jNodeX1, jNodeX2, jNodeX3
     REAL(DP) :: WeightX
 
-    UseTroubledCellIndicator = .TRUE.
-    IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
-      UseTroubledCellIndicator = UseTroubledCellIndicator_Option
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( UseTroubledCellIndicator, LimiterThreshold )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE   ( UseTroubledCellIndicator, LimiterThreshold )
+#endif
 
-    LimiterThreshold = 0.03_DP * 2.0_DP**( nNodes - 2 )
-    IF( PRESENT( LimiterThreshold_Option ) ) &
-      LimiterThreshold = LimiterThreshold_Option
+    IF( .NOT. UseTroubledCellIndicator ) RETURN
 
     ALLOCATE( WeightsX_X1_P(nDOFX), WeightsX_X1_N(nDOFX) )
     ALLOCATE( WeightsX_X2_P(nDOFX), WeightsX_X2_N(nDOFX) )
@@ -200,7 +202,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF
+    INTEGER  :: iNX, iX1, iX2, iX3, iCF
     REAL(DP) :: U_K (0:2*nDimsX,nCF)
     REAL(DP) :: U_K0(0:2*nDimsX,nCF)
     REAL(DP) :: Y_K (0:2*nDimsX)
@@ -210,9 +212,44 @@ CONTAINS
                   iX_B1(2):iX_E1(2), &
                   iX_B1(3):iX_E1(3))
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iX_B1, iX_E1, D )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  iX_B1, iX_E1, D )
+#endif
+
     IF( .NOT. UseTroubledCellIndicator )THEN
 
-      D(:,:,:,:,iDF_TCI) = 1.1_DP * LimiterThreshold
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( iX_B1, iX_E1, D )
+#endif
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
+      DO iNX = 1, nDOFX
+
+        D(iNX,iX1,iX2,iX3,iDF_TCI) = 1.1_DP * LimiterThreshold
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    D ) &
+    !$OMP MAP( release: iX_B1, iX_E1 )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(      D ) &
+    !$ACC DELETE(       iX_B1, iX_E1 )
+#endif
+
       RETURN
 
     END IF
