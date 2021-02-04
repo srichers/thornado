@@ -27,13 +27,13 @@ MODULE PolynomialBasisMappingModule
   PUBLIC :: MapModalToNodal_Radiation_X
   PUBLIC :: MapModalToNodal_Radiation
 
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: Kij_X, Kij_Z
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Pij_X, Pij_Z
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: Kij_X, Pij_X
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE         :: Kij_Z, Pij_Z
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET( Kij_X )
+  !$OMP DECLARE TARGET( Kij_X, Pij_X )
 #elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE( Kij_X )
+  !$ACC DECLARE CREATE( Kij_X, Pij_X )
 #endif
 
 CONTAINS
@@ -120,9 +120,9 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( Kij_X )
+    !$OMP TARGET UPDATE TO( Kij_X, Pij_X )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE   ( Kij_X )
+    !$ACC UPDATE DEVICE   ( Kij_X, Pij_X )
 #endif
 
   END SUBROUTINE InitializePolynomialBasisMapping
