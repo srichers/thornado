@@ -554,13 +554,13 @@ CONTAINS
         XD = 0.5_DP
 
         LeftState(iPF_D ) = 1.0_DP
-        LeftState(iPF_V1) = 0.0_DP
+        LeftState(iPF_V1) = +0.1_DP
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
         LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
 
         RightState(iPF_D ) = 0.125_DP
-        RightState(iPF_V1) = 0.0_DP
+        RightState(iPF_V1) = -0.1_DP
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )

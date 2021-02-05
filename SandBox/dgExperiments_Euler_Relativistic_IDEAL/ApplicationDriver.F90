@@ -337,10 +337,10 @@ PROGRAM ApplicationDriver
   BetaTVD                   = 1.75_DP
   BetaTVB                   = 0.0_DP
   SlopeTolerance            = 1.0e-6_DP
-  UseCharacteristicLimiting = .FALSE.
+  UseCharacteristicLimiting = .TRUE.
   UseTroubledCellIndicator  = .FALSE.
   LimiterThresholdParameter = 0.015_DP
-  UseConservativeCorrection = .FALSE.
+  UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
 
@@ -436,8 +436,12 @@ PROGRAM ApplicationDriver
 
 print*, 'CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL'
 
-    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+    DO iCycle = 1, 100
+
+      CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+    END DO
 
 !      CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
 !             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
