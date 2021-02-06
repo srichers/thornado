@@ -33,14 +33,14 @@ geometry.coord_sys = 0           # CARTESIAN
 geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
-amr.n_cell            = 64 01 01 # Number of cells in each dimension
+amr.n_cell            = 32 01 01 # Number of cells in each dimension
 thornado.swX          = 01 00 00 # Stencil width (nGhostCells) in each dimension
 amr.max_grid_size_x   = 16
-amr.blocking_factor_x = 1
-amr.max_level         = 0
+amr.blocking_factor_x = 8
+amr.max_level         = 1
 
 # Slope limiter parameters
-SL.UseSlopeLimiter           = 1
+SL.UseSlopeLimiter           = 0
 SL.SlopeLimiterMethod        = "TVD"
 SL.BetaTVD                   = 1.75e+0
 SL.BetaTVB                   = 0.00e+0
@@ -51,7 +51,7 @@ SL.LimiterThresholdParameter = 3.00e-2
 SL.UseConservativeCorrection = 1
 
 # Positivity limiter parameters
-PL.UsePositivityLimiter = 1
+PL.UsePositivityLimiter = 0
 PL.Min_1                = 1.0e-13
 PL.Min_2                = 1.0e-13
 

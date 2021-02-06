@@ -23,12 +23,12 @@ PROGRAM WriteProjectionMatrix
   REAL(DP) :: xL(3), xR(3), ZoomX(3)
   LOGICAL :: ActivateUnits
 
-  ProgramName = 'Advection2D'
+  ProgramName = 'Advection'
   CoordinateSystem = 'CARTESIAN'
 
-  nX = [ 32, 32, 1 ]
-  swX = [ 1, 1, 0 ]
-  bcX = [ 1, 1, 0 ]
+  nX = [ 32, 1, 1 ]
+  swX = [ 1, 0, 0 ]
+  bcX = [ 1, 0, 0 ]
 
   xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
   xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
