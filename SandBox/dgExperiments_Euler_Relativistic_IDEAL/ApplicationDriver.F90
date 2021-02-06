@@ -223,8 +223,8 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 32, 32, 32 ]
-      swX = [ 1, 1, 1 ]
+      nX  = [ 32, 1, 1 ]
+      swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -337,10 +337,10 @@ PROGRAM ApplicationDriver
   BetaTVD                   = 1.75_DP
   BetaTVB                   = 0.0_DP
   SlopeTolerance            = 1.0e-6_DP
-  UseCharacteristicLimiting = .TRUE.
+  UseCharacteristicLimiting = .FALSE.
   UseTroubledCellIndicator  = .FALSE.
   LimiterThresholdParameter = 0.015_DP
-  UseConservativeCorrection = .TRUE.
+  UseConservativeCorrection = .FALSE.
 
   ! --- Positivity Limiter ---
 
@@ -432,16 +432,14 @@ PROGRAM ApplicationDriver
   !$ACC UPDATE DEVICE(    uCF )
 #endif
 
+#if defined(THORNADO_OACC)
+FileNumber = 1
+#endif
+
 !    IF( RestartFileNumber .LT. 0 )THEN
 
-print*, 'CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL'
-
-    DO iCycle = 1, 100
-
-      CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
-
-    END DO
+    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
 !      CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
 !             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
@@ -449,9 +447,6 @@ print*, 'CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL'
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-#if defined(THORNADO_OACC)
-FileNumber = 1
-#endif
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 !

@@ -555,14 +555,14 @@ CONTAINS
 
         LeftState(iPF_D ) = 1.0_DP
         LeftState(iPF_V1) = +0.1_DP
-        LeftState(iPF_V2) = 0.0_DP
-        LeftState(iPF_V3) = 0.0_DP
+        LeftState(iPF_V2) = +0.4_DP
+        LeftState(iPF_V3) = +0.3_DP
         LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
 
         RightState(iPF_D ) = 0.125_DP
         RightState(iPF_V1) = -0.1_DP
-        RightState(iPF_V2) = 0.0_DP
-        RightState(iPF_V3) = 0.0_DP
+        RightState(iPF_V2) = -0.3_DP
+        RightState(iPF_V3) = +0.4_DP
         RightState(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
 
       CASE( 'IsolatedShock' )
@@ -756,6 +756,8 @@ CONTAINS
               = 2.0_DP + 0.3_DP * SIN( 50.0_DP * X1 )
 
         END IF
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 2.0_DP + SIN( 1.0d2*TwoPi * X1 )
 
       END DO
 
