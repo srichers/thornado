@@ -4,6 +4,7 @@ MODULE Euler_DiscontinuityDetectionModule
     DP, &
     Zero, &
     One, &
+    Two, &
     Third, &
     SqrtTiny
   USE ProgramHeaderModule, ONLY: &
@@ -94,12 +95,25 @@ MODULE Euler_DiscontinuityDetectionModule
 CONTAINS
 
 
-  SUBROUTINE InitializeTroubledCellIndicator_Euler
+  SUBROUTINE InitializeTroubledCellIndicator_Euler &
+    ( UseTroubledCellIndicator_Option, &
+      LimiterThresholdParameter_Option )
+
+    LOGICAL,  INTENT(in), OPTIONAL :: UseTroubledCellIndicator_Option
+    REAL(DP), INTENT(in), OPTIONAL :: LimiterThresholdParameter_Option
 
     INTEGER  :: iNode, iNodeX1, iNodeX2, iNodeX3
     INTEGER  :: jNode, jNodeX1, jNodeX2, jNodeX3
     REAL(DP) :: WeightX
 
+    UseTroubledCellIndicator = .TRUE.
+    IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
+      UseTroubledCellIndicator = UseTroubledCellIndicator_Option
+
+    LimiterThresholdParameter = 0.03_DP
+    IF( PRESENT( LimiterThresholdParameter_Option ) ) &
+      LimiterThresholdParameter = LimiterThresholdParameter_Option
+    LimiterThreshold = LimiterThresholdParameter * Two**( nNodes - 2 )
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO( UseTroubledCellIndicator, LimiterThreshold )
 #elif defined(THORNADO_OACC)
@@ -185,6 +199,8 @@ CONTAINS
 
 
   SUBROUTINE FinalizeTroubledCellIndicator_Euler
+
+    IF( .NOT. UseTroubledCellIndicator ) RETURN
 
     DEALLOCATE( WeightsX_X1_P, WeightsX_X1_N )
     DEALLOCATE( WeightsX_X2_P, WeightsX_X2_N )

@@ -3,8 +3,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   USE KindModule, ONLY: &
     DP, &
     Zero, &
-    One, &
-    Two
+    One
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDimsX, &
@@ -62,7 +61,6 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
     FinalizeTroubledCellIndicator_Euler, &
-    UseTroubledCellIndicator, &
     LimiterThreshold, &
     DetectTroubledCells_Euler
   USE TimersModule_Euler, ONLY: &
@@ -88,7 +86,6 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
 
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
-  REAL(DP) :: LimiterThresholdParameter
   REAL(DP) :: I_6x6(1:6,1:6)
 
   ! --- Conservative Correction ---
@@ -137,8 +134,9 @@ CONTAINS
     CHARACTER(*), INTENT(in), OPTIONAL :: &
       SlopeLimiterMethod_Option
 
-    INTEGER :: i, iPol, iNX, iNX1, iNX2, iNX3
-    LOGICAL :: Verbose
+    INTEGER  :: i, iPol, iNX, iNX1, iNX2, iNX3
+    LOGICAL  :: Verbose, UseTroubledCellIndicator
+    REAL(DP) :: LimiterThresholdParameter
 
     UseSlopeLimiter = .TRUE.
     IF( PRESENT( UseSlopeLimiter_Option ) ) &
@@ -171,7 +169,6 @@ CONTAINS
     LimiterThresholdParameter = 0.03_DP
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
       LimiterThresholdParameter = LimiterThresholdParameter_Option
-    LimiterThreshold = LimiterThresholdParameter * Two**( nNodes - 2 )
 
     UseConservativeCorrection = .TRUE.
     IF( PRESENT( UseConservativeCorrection_Option ) ) &
@@ -180,6 +177,10 @@ CONTAINS
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
+
+    CALL InitializeTroubledCellIndicator_Euler &
+           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
+             LimiterThresholdParameter_Option = LimiterThresholdParameter )
 
     IF( Verbose )THEN
       WRITE(*,*)
@@ -256,8 +257,6 @@ CONTAINS
     !$ACC     UseConservativeCorrection, &
     !$ACC     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX )
 #endif
-
-    CALL InitializeTroubledCellIndicator_Euler
 
   END SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL
 
@@ -1443,8 +1442,7 @@ print*,dU
 
     DEALLOCATE( LegendreX )
 
-    IF( UseTroubledCellIndicator ) &
-      CALL FinalizeTroubledCellIndicator_Euler
+    CALL FinalizeTroubledCellIndicator_Euler
 
   END SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 

@@ -44,7 +44,6 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
     FinalizeTroubledCellIndicator_Euler, &
-    UseTroubledCellIndicator, &
     LimiterThreshold, &
     DetectTroubledCells_Euler
   USE TimersModule_Euler, ONLY: &
@@ -65,7 +64,6 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   LOGICAL  :: Verbose
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
-  REAL(DP) :: LimiterThresholdParameter
   REAL(DP) :: I_6x6(1:6,1:6)
 
 
@@ -91,7 +89,9 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
 
-    INTEGER :: i
+    INTEGER  :: i
+    LOGICAL  :: UseTroubledCellIndicator
+    REAL(DP) :: LimiterThresholdParameter
 
     BetaTVD = One
     IF( PRESENT( BetaTVD_Option ) ) &
@@ -120,7 +120,6 @@ CONTAINS
     LimiterThresholdParameter = 0.03_DP
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
       LimiterThresholdParameter = LimiterThresholdParameter_Option
-    LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
 
     UseConservativeCorrection = .TRUE.
     IF( PRESENT( UseConservativeCorrection_Option ) ) &
@@ -129,6 +128,10 @@ CONTAINS
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
+
+    CALL InitializeTroubledCellIndicator_Euler &
+           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
+             LimiterThresholdParameter_Option = LimiterThresholdParameter )
 
     IF( Verbose )THEN
       WRITE(*,*)
@@ -159,8 +162,6 @@ CONTAINS
         UseConservativeCorrection
     END IF
 
-    CALL InitializeTroubledCellIndicator_Euler
-
     I_6x6 = Zero
     DO i = 1, 6
       I_6x6(i,i) = One
@@ -171,8 +172,7 @@ CONTAINS
 
   SUBROUTINE FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
-    IF( UseTroubledCellIndicator ) &
-      CALL FinalizeTroubledCellIndicator_Euler
+    CALL FinalizeTroubledCellIndicator_Euler
 
   END SUBROUTINE FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
