@@ -301,7 +301,7 @@ CONTAINS
 
 
 !!$  REAL(DP) PURE ELEMENTAL FUNCTION MinMod2( a, b )
-  REAL(DP) FUNCTION MinMod2( a, b )
+  REAL(DP) ELEMENTAL FUNCTION MinMod2( a, b )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET
@@ -326,7 +326,7 @@ CONTAINS
 
 
 !!$  REAL(DP) PURE ELEMENTAL FUNCTION MinMod( a, b, c )
-  REAL(DP) FUNCTION MinMod( a, b, c )
+  REAL(DP) ELEMENTAL FUNCTION MinMod( a, b, c )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET
@@ -343,7 +343,7 @@ CONTAINS
 
 
 !!$  REAL(DP) PURE ELEMENTAL FUNCTION MinModB( a, b, c, dx, M )
-  REAL(DP) FUNCTION MinModB( a, b, c, dx, M )
+  REAL(DP) ELEMENTAL FUNCTION MinModB( a, b, c, dx, M )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET

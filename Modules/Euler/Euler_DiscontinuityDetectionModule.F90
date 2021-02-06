@@ -105,6 +105,7 @@ CONTAINS
     INTEGER  :: iNode, iNodeX1, iNodeX2, iNodeX3
     INTEGER  :: jNode, jNodeX1, jNodeX2, jNodeX3
     REAL(DP) :: WeightX
+    REAL(DP) :: LimiterThresholdParameter
 
     UseTroubledCellIndicator = .TRUE.
     IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
@@ -114,6 +115,7 @@ CONTAINS
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
       LimiterThresholdParameter = LimiterThresholdParameter_Option
     LimiterThreshold = LimiterThresholdParameter * Two**( nNodes - 2 )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO( UseTroubledCellIndicator, LimiterThreshold )
 #elif defined(THORNADO_OACC)
