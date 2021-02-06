@@ -69,7 +69,8 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     TimersStart_Euler, &
     TimersStop_Euler, &
     Timer_Euler_SlopeLimiter, &
-    Timer_Euler_CharacteristicDecomposition
+    Timer_Euler_CharacteristicDecomposition, &
+    Timer_Euler_TroubledCellIndicator
 
   IMPLICIT NONE
   PRIVATE
@@ -277,23 +278,28 @@ CONTAINS
     INTEGER,  INTENT(in), OPTIONAL :: &
       iApplyBC_Option(3)
 
+    CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
+
     IF( .NOT. UseCharacteristicLimiting )THEN
 
-      CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD_Componentwise &
+      CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_Componentwise &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
                SuppressBC_Option, iApplyBC_Option )
 
     ELSE
 
-      CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD_Characteristic &
+      CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_Characteristic &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
                  SuppressBC_Option, iApplyBC_Option )
+
     END IF
+
+    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
 
   END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL
 
 
-  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD_Componentwise &
+  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_Componentwise &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -318,35 +324,36 @@ CONTAINS
     INTEGER  :: iApplyBC(3)
     REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: a(nDimsX), b(nDimsX), c(nDimsX)
-    REAL(DP) :: dU(nCF,nDimsX)
 
     INTEGER  :: nX_B, nX_E, nCF_B, nCF_E
 
-    REAL(DP) :: SqrtGm(1:nDOFX      ,iX_B0(1):iX_E0(1), &
-                                     iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3))
-    REAL(DP) :: Vol   (              iX_B0(1):iX_E0(1), &
-                                     iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3))
-    REAL(DP) :: U_X   (1:nDOFX,1:nCF,iX_B0(1):iX_E0(1), &
-                                     iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3))
-    REAL(DP) :: U_K   (1:nCF        ,iX_B0(1):iX_E0(1), &
-                                     iX_B0(2):iX_E0(2), &
-                                     iX_B0(3):iX_E0(3))
+    REAL(DP) :: dU    (1:nCF,1:nDimsX,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: U_N   (1:nDOFX,1:nCF,iX_B1(1):iX_E1(1), &
-                                     iX_B1(2):iX_E1(2), &
-                                     iX_B1(3):iX_E1(3))
-    REAL(DP) :: U_M   (1:nDOFX,1:nCF,iX_B1(1):iX_E1(1), &
-                                     iX_B1(2):iX_E1(2), &
-                                     iX_B1(3):iX_E1(3))
+    REAL(DP) :: SqrtGm(1:nDOFX       ,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP) :: Vol   (               iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP) :: U_X   (1:nDOFX,1:nCF ,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP) :: U_K   (1:nCF         ,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+
+    REAL(DP) :: U_N   (1:nDOFX,1:nCF ,iX_B1(1):iX_E1(1), &
+                                      iX_B1(2):iX_E1(2), &
+                                      iX_B1(3):iX_E1(3))
+    REAL(DP) :: U_M   (1:nDOFX,1:nCF ,iX_B1(1):iX_E1(1), &
+                                      iX_B1(2):iX_E1(2), &
+                                      iX_B1(3):iX_E1(3))
 
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UseSlopeLimiter ) RETURN
-
-    CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
@@ -391,12 +398,12 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3, &
     !$OMP             ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
-    !$OMP MAP( alloc: SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell )
+    !$OMP MAP( alloc: SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3, &
     !$ACC             ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
-    !$ACC CREATE(     SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell )
+    !$ACC CREATE(     SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU )
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -518,15 +525,15 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( dU, SlopeDifference, a, b, c )
+    !$OMP PRIVATE( SlopeDifference, a, b, c )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, D, U_M, dX1, dX2, dX3, LimitedCell, &
-    !$ACC          ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
-    !$ACC PRIVATE( dU, SlopeDifference, a, b, c )
+    !$ACC          ExcludeInnerGhostCell, ExcludeOuterGhostCell, dU ) &
+    !$ACC PRIVATE( SlopeDifference, a, b, c )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( dU, SlopeDifference )
+    !$OMP PRIVATE( SlopeDifference, a, b, c )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -560,7 +567,7 @@ CONTAINS
 
       END IF
 
-      dU(iCF,1) = MinModB( a(1), b(1), c(1), dX1(iX1), BetaTVB )
+      dU(iCF,1,iX1,iX2,iX3) = MinModB( a(1), b(1), c(1), dX1(iX1), BetaTVB )
 
       IF( nDimsX .GT. 1 )THEN
 
@@ -589,7 +596,7 @@ CONTAINS
 
         END IF
 
-        dU(iCF,2) = MinModB( a(2), b(2), c(2), dX2(iX2), BetaTVB )
+        dU(iCF,2,iX1,iX2,iX3) = MinModB( a(2), b(2), c(2), dX2(iX2), BetaTVB )
 
       END IF
 
@@ -607,7 +614,7 @@ CONTAINS
         ELSE IF( iX3 .EQ. iX_E0(3) .AND. ExcludeOuterGhostCell(3) )THEN
 
           b(3) = BetaTVD * ( U_M(1,iCF,iX1,iX2,iX3  ) &
-                        - U_M(1,iCF,iX1,iX2,iX3-1) )
+                           - U_M(1,iCF,iX1,iX2,iX3-1) )
           c(3) = b(3)
 
 
@@ -618,25 +625,27 @@ CONTAINS
           c(3) = BetaTVD * ( U_M(1,iCF,iX1,iX2,iX3+1) &
                            - U_M(1,iCF,iX1,iX2,iX3  ) )
 
+
         END IF
 
-        dU(iCF,3) = MinModB( a(3), b(3), c(3), dX3(iX3), BetaTVB )
+        dU(iCF,3,iX1,iX2,iX3) = MinModB( a(3), b(3), c(3), dX3(iX3), BetaTVB )
 
       END IF
 
       ! --- Compare Limited Slopes to Original Slopes ---
 
-      SlopeDifference(iCF) = ABS( U_M(2,iCF,iX1,iX2,iX3) - dU(iCF,1) )
+      SlopeDifference(iCF) &
+        = ABS( U_M(2,iCF,iX1,iX2,iX3) - dU(iCF,1,iX1,iX2,iX3) )
 
       IF( nDimsX .GT. 1 ) &
         SlopeDifference(iCF) &
           = MAX( SlopeDifference(iCF), &
-                 ABS( U_M(3,iCF,iX1,iX2,iX3) - dU(iCF,2) ) )
+                 ABS( U_M(3,iCF,iX1,iX2,iX3) - dU(iCF,2,iX1,iX2,iX3) ) )
 
       IF( nDimsX .GT. 2 ) &
         SlopeDifference(iCF) &
           = MAX( SlopeDifference(iCF), &
-                 ABS( U_M(4,iCF,iX1,iX2,iX3) - dU(iCF,3) ) )
+                 ABS( U_M(4,iCF,iX1,iX2,iX3) - dU(iCF,3,iX1,iX2,iX3) ) )
 
       ! --- Replace Slopes and Discard High-Order Components ---
       ! --- if Limited Slopes Deviate too Much from Original ---
@@ -652,11 +661,11 @@ CONTAINS
 
         END DO
 
-        U_M(2,iCF,iX1,iX2,iX3) = dU(iCF,1)
+        U_M(2,iCF,iX1,iX2,iX3) = dU(iCF,1,iX1,iX2,iX3)
 
-        IF( nDimsX .GT. 1 ) U_M(3,iCF,iX1,iX2,iX3) = dU(iCF,2)
+        IF( nDimsX .GT. 1 ) U_M(3,iCF,iX1,iX2,iX3) = dU(iCF,2,iX1,iX2,iX3)
 
-        IF( nDimsX .GT. 2 ) U_M(4,iCF,iX1,iX2,iX3) = dU(iCF,3)
+        IF( nDimsX .GT. 2 ) U_M(4,iCF,iX1,iX2,iX3) = dU(iCF,3,iX1,iX2,iX3)
 
         LimitedCell(iCF,iX1,iX2,iX3) = .TRUE.
 
@@ -700,28 +709,29 @@ CONTAINS
     END DO
     END DO
 
+!$ACC UPDATE HOST( dU )
+print*,dU
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    U ) &
-    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, D, dX1, dX2, dX3, &
+    !$OMP MAP( from:    U, D ) &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$OMP               ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
-    !$OMP               SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell )
+    !$OMP               SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      U ) &
-    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, D, dX1, dX2, dX3, &
+    !$ACC COPYOUT(      U, D ) &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$ACC               ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
-    !$ACC               SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell )
+    !$ACC               SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU )
 #endif
 
     END ASSOCIATE
 
-    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
-
-  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD_Componentwise
+  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_Componentwise
 
 
-  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD_Characteristic &
+  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_Characteristic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -746,55 +756,59 @@ CONTAINS
     INTEGER  :: iApplyBC(3)
     REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: a(nCF,nDimsX), b(nCF,nDimsX), c(nCF,nDimsX)
-    REAL(DP) :: dU(nCF,nDimsX), dU_C(nCF)
+    REAL(DP) :: dU_C(nCF)
 
     INTEGER  :: nX_B, nX_E, nCF_B, nCF_E, nGF_B
 
-    REAL(DP) :: SqrtGm (1:nDOFX      ,iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
-    REAL(DP) :: Vol    (              iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
-    REAL(DP) :: U_X    (1:nDOFX,1:nCF,iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
-    REAL(DP) :: U_K    (1:nCF        ,iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
+    REAL(DP) :: dU     (1:nCF,1:nDimsX,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: G_X    (1:nDOFX,1:8  ,iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
-    REAL(DP) :: G_K    (1:8          ,iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
+    REAL(DP) :: SqrtGm (1:nDOFX       ,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
+    REAL(DP) :: Vol    (               iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
+    REAL(DP) :: U_X    (1:nDOFX,1:nCF ,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
+    REAL(DP) :: U_K    (1:nCF         ,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: U_N    (1:nDOFX,1:nCF,iX_B1(1):iX_E1(1), &
-                                      iX_B1(2):iX_E1(2), &
-                                      iX_B1(3):iX_E1(3))
-    REAL(DP) :: U_M    (1:nDOFX,1:nCF,iX_B1(1):iX_E1(1), &
-                                      iX_B1(2):iX_E1(2), &
-                                      iX_B1(3):iX_E1(3))
+    REAL(DP) :: G_X    (1:nDOFX,1:8   ,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
+    REAL(DP) :: G_K    (1:8           ,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: R_X1   (1:nDOFX,1:nCF,iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
-    REAL(DP) :: invR_X1(1:nDOFX,1:nCF,iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
-    REAL(DP) :: R_X2   (1:nDOFX,1:nCF,iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
-    REAL(DP) :: invR_X2(1:nDOFX,1:nCF,iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
-    REAL(DP) :: R_X3   (1:nDOFX,1:nCF,iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
-    REAL(DP) :: invR_X3(1:nDOFX,1:nCF,iX_B0(1):iX_E0(1), &
-                                      iX_B0(2):iX_E0(2), &
-                                      iX_B0(3):iX_E0(3))
+    REAL(DP) :: U_N    (1:nDOFX,1:nCF ,iX_B1(1):iX_E1(1), &
+                                       iX_B1(2):iX_E1(2), &
+                                       iX_B1(3):iX_E1(3))
+    REAL(DP) :: U_M    (1:nDOFX,1:nCF ,iX_B1(1):iX_E1(1), &
+                                       iX_B1(2):iX_E1(2), &
+                                       iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: R_X1   (1:nDOFX,1:nCF ,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
+    REAL(DP) :: invR_X1(1:nDOFX,1:nCF ,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
+    REAL(DP) :: R_X2   (1:nDOFX,1:nCF ,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
+    REAL(DP) :: invR_X2(1:nDOFX,1:nCF ,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
+    REAL(DP) :: R_X3   (1:nDOFX,1:nCF ,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
+    REAL(DP) :: invR_X3(1:nDOFX,1:nCF ,iX_B0(1):iX_E0(1), &
+                                       iX_B0(2):iX_E0(2), &
+                                       iX_B0(3):iX_E0(3))
 
     REAL(DP) :: R(1:nCF,1:nCF), invR(1:nCF,1:nCF)
     REAL(DP) :: GK(8), UK(nCF)
@@ -802,8 +816,6 @@ CONTAINS
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UseSlopeLimiter ) RETURN
-
-    CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
@@ -850,13 +862,13 @@ CONTAINS
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3, &
     !$OMP             ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
     !$OMP MAP( alloc: SqrtGm, Vol, U_X, U_K, U_N, U_M, G_X, G_K, LimitedCell, &
-    !$OMP             R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+    !$OMP             R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3, dU )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3, &
     !$ACC             ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
     !$ACC CREATE(     SqrtGm, Vol, U_X, U_K, U_N, U_M, G_X, G_K, LimitedCell, &
-    !$ACC             R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+    !$ACC             R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3, dU )
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -1011,9 +1023,7 @@ CONTAINS
     END DO
     END DO
 
-
-
-! Isolate all Matrix-Vector multiplies into one block
+    CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -1091,14 +1101,18 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop_Euler( Timer_Euler_CharacteristicDecomposition )
+
+    CALL TimersStart_Euler( Timer_Euler_TroubledCellIndicator )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( iX_B0, iX_E0, D, LimitedCell, G_K, U_M, dX1, dX2, dX3, &
-    !$ACC          R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3, &
+    !$ACC          R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3, dU, &
     !$ACC          ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
-    !$ACC PRIVATE( a, b, c, dU, dU_C, SlopeDifference )
+    !$ACC PRIVATE( a, b, c, dU_C, SlopeDifference )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
@@ -1157,14 +1171,15 @@ CONTAINS
 
         dU_C(iCF) = MinModB( a(iCF,1), b(iCF,1), c(iCF,1), dX1(iX1), BetaTVB )
 
-        dU(iCF,1) = Zero
+        dU(iCF,1,iX1,iX2,iX3) = Zero
 
       END DO
 
       DO iCF = 1, nCF
       DO jCF = 1, nCF
 
-        dU(iCF,1) = dU(iCF,1) + R_X1(iCF,jCF,iX1,iX2,iX3) * dU_C(jCF)
+        dU(iCF,1,iX1,iX2,iX3) &
+          = dU(iCF,1,iX1,iX2,iX3) + R_X1(iCF,jCF,iX1,iX2,iX3) * dU_C(jCF)
 
       END DO
       END DO
@@ -1220,14 +1235,15 @@ CONTAINS
 
           dU_C(iCF) = MinModB( a(iCF,2), b(iCF,2), c(iCF,2), dX2(iX2), BetaTVB )
 
-          dU(iCF,2) = Zero
+          dU(iCF,2,iX1,iX2,iX3) = Zero
 
         END DO
 
         DO iCF = 1, nCF
         DO jCF = 1, nCF
 
-          dU(iCF,2) = dU(iCF,2) + R_X2(iCF,jCF,iX1,iX2,iX3) * dU_C(jCF)
+          dU(iCF,2,iX1,iX2,iX3) &
+            = dU(iCF,2,iX1,iX2,iX3) + R_X2(iCF,jCF,iX1,iX2,iX3) * dU_C(jCF)
 
         END DO
         END DO
@@ -1285,14 +1301,15 @@ CONTAINS
 
           dU_C(iCF) = MinModB( a(iCF,3), b(iCF,3), c(iCF,3), dX3(iX3), BetaTVB )
 
-          dU(iCF,3) = Zero
+          dU(iCF,3,iX1,iX2,iX3) = Zero
 
         END DO
 
         DO iCF = 1, nCF
         DO jCF = 1, nCF
 
-          dU(iCF,3) = dU(iCF,3) + R_X3(iCF,jCF,iX1,iX2,iX3) * dU_C(jCF)
+          dU(iCF,3,iX1,iX2,iX3) &
+            = dU(iCF,3,iX1,iX2,iX3) + R_X3(iCF,jCF,iX1,iX2,iX3) * dU_C(jCF)
 
         END DO
         END DO
@@ -1303,14 +1320,15 @@ CONTAINS
     END DO
     END DO
 
+    CALL TimersStop_Euler( Timer_Euler_TroubledCellIndicator )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( iX_B0, iX_E0, D, LimitedCell, G_K, U_M, dX1, dX2, dX3, &
-    !$ACC          R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3, &
-    !$ACC          ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
-    !$ACC PRIVATE( a, b, c, dU, dU_C, SlopeDifference )
+    !$ACC          R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3, dU ) &
+    !$ACC PRIVATE( a, b, c, dU_C, SlopeDifference )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
@@ -1319,21 +1337,23 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       IF( D(1,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) CYCLE
+
       ! --- Compare Limited Slopes to Original Slopes ---
 
       DO iCF = 1, nCF
 
-        SlopeDifference(iCF) = ABS( U_M(2,iCF,iX1,iX2,iX3) - dU(iCF,1) )
+        SlopeDifference(iCF) &
+          = ABS( U_M(2,iCF,iX1,iX2,iX3) - dU(iCF,1,iX1,iX2,iX3) )
 
         IF( nDimsX .GT. 1 ) &
           SlopeDifference(iCF) &
             = MAX( SlopeDifference(iCF), &
-                   ABS( U_M(3,iCF,iX1,iX2,iX3) - dU(iCF,2) ) )
+                   ABS( U_M(3,iCF,iX1,iX2,iX3) - dU(iCF,2,iX1,iX2,iX3) ) )
 
         IF( nDimsX .GT. 2 ) &
           SlopeDifference(iCF) &
             = MAX( SlopeDifference(iCF), &
-                   ABS( U_M(4,iCF,iX1,iX2,iX3) - dU(iCF,3) ) )
+                   ABS( U_M(4,iCF,iX1,iX2,iX3) - dU(iCF,3,iX1,iX2,iX3) ) )
 
         ! --- Replace Slopes and Discard High-Order Components ---
         ! --- if Limited Slopes Deviate too Much from Original ---
@@ -1349,11 +1369,11 @@ CONTAINS
 
           END DO
 
-          U_M(2,iCF,iX1,iX2,iX3) = dU(iCF,1)
+          U_M(2,iCF,iX1,iX2,iX3) = dU(iCF,1,iX1,iX2,iX3)
 
-          IF( nDimsX .GT. 1 ) U_M(3,iCF,iX1,iX2,iX3) = dU(iCF,2)
+          IF( nDimsX .GT. 1 ) U_M(3,iCF,iX1,iX2,iX3) = dU(iCF,2,iX1,iX2,iX3)
 
-          IF( nDimsX .GT. 2 ) U_M(4,iCF,iX1,iX2,iX3) = dU(iCF,3)
+          IF( nDimsX .GT. 2 ) U_M(4,iCF,iX1,iX2,iX3) = dU(iCF,3,iX1,iX2,iX3)
 
           LimitedCell(iCF,iX1,iX2,iX3) = .TRUE.
 
@@ -1400,25 +1420,23 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    U ) &
-    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, D, dX1, dX2, dX3, &
+    !$OMP MAP( from:    U, D ) &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$OMP               ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
     !$OMP               SqrtGm, Vol, U_X, U_K, U_N, U_M, G_X, G_K, LimitedCell,&
-    !$OMP               R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+    !$OMP               R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3, dU )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      U ) &
-    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, D, dX1, dX2, dX3, &
+    !$ACC COPYOUT(      U, D ) &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$ACC               ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
     !$ACC               SqrtGm, Vol, U_X, U_K, U_N, U_M, G_X, G_K, LimitedCell,&
-    !$ACC               R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+    !$ACC               R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3, dU )
 #endif
 
     END ASSOCIATE
 
-    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
-
-  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD_Characteristic
+  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_Characteristic
 
 
   SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
