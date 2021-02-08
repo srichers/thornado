@@ -314,9 +314,6 @@ CONTAINS
     INTEGER,  INTENT(in), OPTIONAL :: &
       iApplyBC_Option(3)
 
-    LOGICAL  :: LimitedCell(nCF,iX_B0(1):iX_E0(1), &
-                                iX_B0(2):iX_E0(2), &
-                                iX_B0(3):iX_E0(3))
     LOGICAL  :: SuppressBC
     LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
     INTEGER  :: iNX, iX1, iX2, iX3, iCF
@@ -359,6 +356,10 @@ CONTAINS
                                       iX_B0(3):iX_E0(3))
 
     REAL(DP) :: SlopeDifference(1:nCF,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+
+    LOGICAL  :: LimitedCell(1:nCF    ,iX_B0(1):iX_E0(1), &
                                       iX_B0(2):iX_E0(2), &
                                       iX_B0(3):iX_E0(3))
 
@@ -409,14 +410,14 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3, &
     !$OMP             ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
-    !$OMP MAP( alloc: SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU, &
-    !$OMP             a, b, c, SlopeDifference )
+    !$OMP MAP( alloc: SqrtGm, Vol, U_X, U_K, U_N, U_M, dU, &
+    !$OMP             a, b, c, SlopeDifference, LimitedCell )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3, &
     !$ACC             ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
-    !$ACC CREATE(     SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU, &
-    !$ACC             a, b, c, SlopeDifference )
+    !$ACC CREATE(     SqrtGm, Vol, U_X, U_K, U_N, U_M, dU, &
+    !$ACC             a, b, c, SlopeDifference, LimitedCell )
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -741,15 +742,15 @@ CONTAINS
     !$OMP MAP( from:    U, D ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$OMP               ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
-    !$OMP               SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU, &
-    !$OMP               a, b, c, SlopeDifference )
+    !$OMP               SqrtGm, Vol, U_X, U_K, U_N, U_M, dU, &
+    !$OMP               a, b, c, SlopeDifference, LimitedCell )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      U, D ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$ACC               ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
-    !$ACC               SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU, &
-    !$ACC               a, b, c, SlopeDifference )
+    !$ACC               SqrtGm, Vol, U_X, U_K, U_N, U_M, dU, &
+    !$ACC               a, b, c, SlopeDifference, LimitedCell )
 #endif
 
     END ASSOCIATE
