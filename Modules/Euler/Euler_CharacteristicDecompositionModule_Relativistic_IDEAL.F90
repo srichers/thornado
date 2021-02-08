@@ -34,7 +34,7 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler, &
-    Timer_Euler_CharacteristicDecomposition
+    Timer_Euler_SL_CharDecomp
 
   IMPLICIT NONE
   PRIVATE
@@ -81,7 +81,7 @@ CONTAINS
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
     INTEGER  :: i, iErr
 
-!    CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
+!    CALL TimersStart_Euler( Timer_Euler_SL_CharDecomp )
 
     Gmdd11         = G(1)
     Gmdd22         = G(2)
@@ -564,7 +564,7 @@ CONTAINS
 
     END SELECT
 
-!    CALL TimersStop_Euler( Timer_Euler_CharacteristicDecomposition )
+!    CALL TimersStop_Euler( Timer_Euler_SL_CharDecomp )
 
   END SUBROUTINE ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
 

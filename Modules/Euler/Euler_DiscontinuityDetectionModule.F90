@@ -61,8 +61,8 @@ MODULE Euler_DiscontinuityDetectionModule
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler, &
-    Timer_Euler_TroubledCellIndicator, &
-    Timer_Euler_ShockDetector, &
+    Timer_Euler_DD_TCI, &
+    Timer_Euler_DD_ShockDetector, &
     Timer_Euler_CopyIn, &
     Timer_Euler_CopyOut, &
     Timer_Euler_Permute
@@ -276,7 +276,7 @@ CONTAINS
 
     Y = U(:,:,:,:,iCF_Ne) / MAX( U(:,:,:,:,iCF_D), SqrtTiny )
 
-    CALL TimersStart_Euler( Timer_Euler_TroubledCellIndicator )
+    CALL TimersStart_Euler( Timer_Euler_DD_TCI )
 
     ! --- Troubled-Cell Indicator from Fu & Shu (2017) ---
     ! --- JCP, 347, 305 - 327 ----------------------------
@@ -406,7 +406,7 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop_Euler( Timer_Euler_TroubledCellIndicator )
+    CALL TimersStop_Euler( Timer_Euler_DD_TCI )
 
   END SUBROUTINE DetectTroubledCells_Euler
 
@@ -470,7 +470,7 @@ CONTAINS
     INTEGER :: iX2arr(            iX_B1(2):iX_E1(2))
     INTEGER :: iX3arr(            iX_B1(3):iX_E1(3))
 
-    CALL TimersStart_Euler( Timer_Euler_ShockDetector )
+    CALL TimersStart_Euler( Timer_Euler_DD_ShockDetector )
 
     nK_X = PRODUCT( [ iX_E1(1) - iX_B1(1) + 1, &
                       iX_E1(2) - iX_B1(2) + 1, &
@@ -800,7 +800,7 @@ CONTAINS
 
     END IF
 
-    CALL TimersStop_Euler( Timer_Euler_ShockDetector )
+    CALL TimersStop_Euler( Timer_Euler_DD_ShockDetector )
 
   END SUBROUTINE DetectShocks_Euler
 
