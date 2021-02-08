@@ -321,34 +321,46 @@ CONTAINS
     LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
     INTEGER  :: iNX, iX1, iX2, iX3, iCF
     INTEGER  :: iApplyBC(3)
-    REAL(DP) :: SlopeDifference(nCF)
-    REAL(DP) :: a(nDimsX), b(nDimsX), c(nDimsX)
 
     INTEGER  :: nX_B, nX_E, nCF_B, nCF_E
 
-    REAL(DP) :: dU    (1:nCF,1:nDimsX,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: dU(1:nCF,1:nDimsX    ,iX_B0(1):iX_E0(1), &
                                       iX_B0(2):iX_E0(2), &
                                       iX_B0(3):iX_E0(3))
 
     REAL(DP) :: SqrtGm(1:nDOFX       ,iX_B0(1):iX_E0(1), &
                                       iX_B0(2):iX_E0(2), &
                                       iX_B0(3):iX_E0(3))
-    REAL(DP) :: Vol   (               iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Vol(                  iX_B0(1):iX_E0(1), &
                                       iX_B0(2):iX_E0(2), &
                                       iX_B0(3):iX_E0(3))
-    REAL(DP) :: U_X   (1:nDOFX,1:nCF ,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: U_X(1:nDOFX,1:nCF    ,iX_B0(1):iX_E0(1), &
                                       iX_B0(2):iX_E0(2), &
                                       iX_B0(3):iX_E0(3))
-    REAL(DP) :: U_K   (1:nCF         ,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: U_K(1:nCF            ,iX_B0(1):iX_E0(1), &
                                       iX_B0(2):iX_E0(2), &
                                       iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: U_N   (1:nDOFX,1:nCF ,iX_B1(1):iX_E1(1), &
+    REAL(DP) :: U_N(1:nDOFX,1:nCF    ,iX_B1(1):iX_E1(1), &
                                       iX_B1(2):iX_E1(2), &
                                       iX_B1(3):iX_E1(3))
-    REAL(DP) :: U_M   (1:nDOFX,1:nCF ,iX_B1(1):iX_E1(1), &
+    REAL(DP) :: U_M(1:nDOFX,1:nCF    ,iX_B1(1):iX_E1(1), &
                                       iX_B1(2):iX_E1(2), &
                                       iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: a(1:nDimsX,1:nCF     ,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP) :: b(1:nDimsX,1:nCF     ,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP) :: c(1:nDimsX,1:nCF     ,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+
+    REAL(DP) :: SlopeDifference(1:nCF,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
 
     IF( nDOFX .EQ. 1 ) RETURN
 
@@ -397,12 +409,14 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3, &
     !$OMP             ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
-    !$OMP MAP( alloc: SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU )
+    !$OMP MAP( alloc: SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU, &
+    !$OMP             a, b, c, SlopeDifference )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3, &
     !$ACC             ExcludeInnerGhostCell, ExcludeOuterGhostCell ) &
-    !$ACC CREATE(     SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU )
+    !$ACC CREATE(     SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU, &
+    !$ACC             a, b, c, SlopeDifference )
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -523,16 +537,14 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( SlopeDifference, a, b, c )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, D, U_M, dX1, dX2, dX3, LimitedCell, &
-    !$ACC          ExcludeInnerGhostCell, ExcludeOuterGhostCell, dU ) &
-    !$ACC PRIVATE( SlopeDifference, a, b, c )
+    !$ACC          ExcludeInnerGhostCell, ExcludeOuterGhostCell, dU, &
+    !$ACC          a, b, c, SlopeDifference )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( SlopeDifference, a, b, c )
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -541,109 +553,125 @@ CONTAINS
 
       IF( D(1,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) CYCLE
 
-      a(1) = U_M(2,iCF,iX1,iX2,iX3)
+      a(1,iCF,iX1,iX2,iX3) = U_M(2,iCF,iX1,iX2,iX3)
 
       IF     ( iX1 .EQ. iX_B0(1) .AND. ExcludeInnerGhostCell(1) )THEN
 
-        c(1) = BetaTVD * ( U_M(1,iCF,iX1+1,iX2,iX3) &
-                         - U_M(1,iCF,iX1  ,iX2,iX3) )
+        c(1,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1+1,iX2,iX3) &
+                                         - U_M(1,iCF,iX1  ,iX2,iX3) )
 
-        b(1) = c(1)
+        b(1,iCF,iX1,iX2,iX3) = c(1,iCF,iX1,iX2,iX3)
 
       ELSE IF( iX1 .EQ. iX_E0(1) .AND. ExcludeOuterGhostCell(1) )THEN
 
-        b(1) = BetaTVD * ( U_M(1,iCF,iX1  ,iX2,iX3) &
-                         - U_M(1,iCF,iX1-1,iX2,iX3) )
-        c(1) = b(1)
+        b(1,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1  ,iX2,iX3) &
+                                         - U_M(1,iCF,iX1-1,iX2,iX3) )
+
+        c(1,iCF,iX1,iX2,iX3) = b(1,iCF,iX1,iX2,iX3)
 
 
       ELSE
 
-        b(1) = BetaTVD * ( U_M(1,iCF,iX1  ,iX2,iX3) &
-                         - U_M(1,iCF,iX1-1,iX2,iX3) )
-        c(1) = BetaTVD * ( U_M(1,iCF,iX1+1,iX2,iX3) &
-                         - U_M(1,iCF,iX1  ,iX2,iX3) )
+        b(1,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1  ,iX2,iX3) &
+                                         - U_M(1,iCF,iX1-1,iX2,iX3) )
+        c(1,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1+1,iX2,iX3) &
+                                         - U_M(1,iCF,iX1  ,iX2,iX3) )
 
       END IF
 
-      dU(iCF,1,iX1,iX2,iX3) = MinModB( a(1), b(1), c(1), dX1(iX1), BetaTVB )
+      dU(iCF,1,iX1,iX2,iX3) &
+        = MinModB( a(1,iCF,iX1,iX2,iX3), &
+                   b(1,iCF,iX1,iX2,iX3), &
+                   c(1,iCF,iX1,iX2,iX3), &
+                   dX1(iX1), BetaTVB )
 
       IF( nDimsX .GT. 1 )THEN
 
-        a(2) = U_M(3,iCF,iX1,iX2,iX3)
+        a(2,iCF,iX1,iX2,iX3) = U_M(3,iCF,iX1,iX2,iX3)
 
         IF     ( iX2 .EQ. iX_B0(2) .AND. ExcludeInnerGhostCell(2) )THEN
 
-          c(2) = BetaTVD * ( U_M(1,iCF,iX1,iX2+1,iX3) &
-                           - U_M(1,iCF,iX1,iX2  ,iX3) )
+          c(2,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1,iX2+1,iX3) &
+                                           - U_M(1,iCF,iX1,iX2  ,iX3) )
 
-          b(2) = c(2)
+          b(2,iCF,iX1,iX2,iX3) = c(2,iCF,iX1,iX2,iX3)
 
         ELSE IF( iX2 .EQ. iX_E0(2) .AND. ExcludeOuterGhostCell(2) )THEN
 
-          b(2) = BetaTVD * ( U_M(1,iCF,iX1,iX2  ,iX3) &
-                           - U_M(1,iCF,iX1,iX2-1,iX3) )
-          c(2) = b(2)
+          b(2,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1,iX2  ,iX3) &
+                                           - U_M(1,iCF,iX1,iX2-1,iX3) )
+
+          c(2,iCF,iX1,iX2,iX3) = b(2,iCF,iX1,iX2,iX3)
 
 
         ELSE
 
-          b(2) = BetaTVD * ( U_M(1,iCF,iX1,iX2  ,iX3) &
-                           - U_M(1,iCF,iX1,iX2-1,iX3) )
-          c(2) = BetaTVD * ( U_M(1,iCF,iX1,iX2+1,iX3) &
-                           - U_M(1,iCF,iX1,iX2  ,iX3) )
+          b(2,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1,iX2  ,iX3) &
+                                           - U_M(1,iCF,iX1,iX2-1,iX3) )
+
+          c(2,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1,iX2+1,iX3) &
+                                           - U_M(1,iCF,iX1,iX2  ,iX3) )
 
         END IF
 
-        dU(iCF,2,iX1,iX2,iX3) = MinModB( a(2), b(2), c(2), dX2(iX2), BetaTVB )
+        dU(iCF,2,iX1,iX2,iX3) &
+          = MinModB( a(2,iCF,iX1,iX2,iX3), &
+                     b(2,iCF,iX1,iX2,iX3), &
+                     c(2,iCF,iX1,iX2,iX3), &
+                     dX2(iX2), BetaTVB )
 
       END IF
 
       IF( nDimsX .GT. 2 )THEN
 
-        a(3) = U_M(4,iCF,iX1,iX2,iX3)
+        a(3,iCF,iX1,iX2,iX3) = U_M(4,iCF,iX1,iX2,iX3)
 
         IF     ( iX3 .EQ. iX_B0(3) .AND. ExcludeInnerGhostCell(3) )THEN
 
-          c(3) = BetaTVD * ( U_M(1,iCF,iX1,iX2,iX3+1) &
-                           - U_M(1,iCF,iX1,iX2,iX3  ) )
+          c(3,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1,iX2,iX3+1) &
+                                           - U_M(1,iCF,iX1,iX2,iX3  ) )
 
-          b(3) = c(3)
+          b(3,iCF,iX1,iX2,iX3) = c(3,iCF,iX1,iX2,iX3)
 
         ELSE IF( iX3 .EQ. iX_E0(3) .AND. ExcludeOuterGhostCell(3) )THEN
 
-          b(3) = BetaTVD * ( U_M(1,iCF,iX1,iX2,iX3  ) &
-                           - U_M(1,iCF,iX1,iX2,iX3-1) )
-          c(3) = b(3)
+          b(3,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1,iX2,iX3  ) &
+                                           - U_M(1,iCF,iX1,iX2,iX3-1) )
+
+          c(3,iCF,iX1,iX2,iX3) = b(3,iCF,iX1,iX2,iX3)
 
 
         ELSE
 
-          b(3) = BetaTVD * ( U_M(1,iCF,iX1,iX2,iX3  ) &
-                           - U_M(1,iCF,iX1,iX2,iX3-1) )
-          c(3) = BetaTVD * ( U_M(1,iCF,iX1,iX2,iX3+1) &
-                           - U_M(1,iCF,iX1,iX2,iX3  ) )
+          b(3,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1,iX2,iX3  ) &
+                                           - U_M(1,iCF,iX1,iX2,iX3-1) )
 
+          c(3,iCF,iX1,iX2,iX3) = BetaTVD * ( U_M(1,iCF,iX1,iX2,iX3+1) &
+                                           - U_M(1,iCF,iX1,iX2,iX3  ) )
 
         END IF
 
-        dU(iCF,3,iX1,iX2,iX3) = MinModB( a(3), b(3), c(3), dX3(iX3), BetaTVB )
+        dU(iCF,3,iX1,iX2,iX3) &
+          = MinModB( a(3,iCF,iX1,iX2,iX3), &
+                     b(3,iCF,iX1,iX2,iX3), &
+                     c(3,iCF,iX1,iX2,iX3), &
+                     dX3(iX3), BetaTVB )
 
       END IF
 
       ! --- Compare Limited Slopes to Original Slopes ---
 
-      SlopeDifference(iCF) &
+      SlopeDifference(iCF,iX1,iX2,iX3) &
         = ABS( U_M(2,iCF,iX1,iX2,iX3) - dU(iCF,1,iX1,iX2,iX3) )
 
       IF( nDimsX .GT. 1 ) &
-        SlopeDifference(iCF) &
-          = MAX( SlopeDifference(iCF), &
+        SlopeDifference(iCF,iX1,iX2,iX3) &
+          = MAX( SlopeDifference(iCF,iX1,iX2,iX3), &
                  ABS( U_M(3,iCF,iX1,iX2,iX3) - dU(iCF,2,iX1,iX2,iX3) ) )
 
       IF( nDimsX .GT. 2 ) &
-        SlopeDifference(iCF) &
-          = MAX( SlopeDifference(iCF), &
+        SlopeDifference(iCF,iX1,iX2,iX3) &
+          = MAX( SlopeDifference(iCF,iX1,iX2,iX3), &
                  ABS( U_M(4,iCF,iX1,iX2,iX3) - dU(iCF,3,iX1,iX2,iX3) ) )
 
       ! --- Replace Slopes and Discard High-Order Components ---
@@ -651,7 +679,7 @@ CONTAINS
 
       LimitedCell(iCF,iX1,iX2,iX3) = .FALSE.
 
-      IF( SlopeDifference(iCF) &
+      IF( SlopeDifference(iCF,iX1,iX2,iX3) &
             .GT. SlopeTolerance * ABS( U_M(1,iCF,iX1,iX2,iX3) ) )THEN
 
         DO iNX = 2, nDOFX
@@ -708,21 +736,20 @@ CONTAINS
     END DO
     END DO
 
-!$ACC UPDATE HOST( dU )
-print*,dU
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    U, D ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$OMP               ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
-    !$OMP               SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU )
+    !$OMP               SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU, &
+    !$OMP               a, b, c, SlopeDifference )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      U, D ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$ACC               ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
-    !$ACC               SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU )
+    !$ACC               SqrtGm, Vol, U_X, U_K, U_N, U_M, LimitedCell, dU, &
+    !$ACC               a, b, c, SlopeDifference )
 #endif
 
     END ASSOCIATE
