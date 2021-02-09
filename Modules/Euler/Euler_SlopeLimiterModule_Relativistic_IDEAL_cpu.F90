@@ -280,7 +280,7 @@ CONTAINS
                                 iX_B0(3):iX_E0(3))
     LOGICAL  :: SuppressBC
     LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
-    INTEGER  :: iX1, iX2, iX3, iCF
+    INTEGER  :: iX1, iX2, iX3, iCF, iNX, jNX
     INTEGER  :: iApplyBC(3)
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
