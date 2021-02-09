@@ -162,13 +162,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 2
+  nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 2
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -270,13 +270,31 @@ PROGRAM ApplicationDriver
            rPerturbationInner_Option    = rPerturbationInner, &
            rPerturbationOuter_Option    = rPerturbationOuter )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE TO( uCF, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE DEVICE(    uCF, uGF )
+#endif
+
   IF( RestartFileNumber .LT. 0 )THEN
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( uCF, uDF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST       ( uCF, uDF )
+#endif
+
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE TO( uCF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE DEVICE   ( uCF )
+#endif
 
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
