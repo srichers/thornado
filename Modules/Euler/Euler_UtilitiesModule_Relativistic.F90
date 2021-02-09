@@ -309,17 +309,17 @@ CONTAINS
                G   (1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33),  &
                iErr(1:nDOFX,iX1,iX2,iX3) )
 
-!      CALL ComputeAuxiliary_Fluid &
-!             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), &
-!               P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
-!               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), &
-!               A(1:nDOFX,iX1,iX2,iX3,iAF_P ), &
-!               A(1:nDOFX,iX1,iX2,iX3,iAF_T ), &
-!               A(1:nDOFX,iX1,iX2,iX3,iAF_Ye), &
-!               A(1:nDOFX,iX1,iX2,iX3,iAF_S ), &
-!               A(1:nDOFX,iX1,iX2,iX3,iAF_E ), &
-!               A(1:nDOFX,iX1,iX2,iX3,iAF_Gm), &
-!               A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
+      CALL ComputeAuxiliary_Fluid &
+             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_P ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_T ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Ye), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_S ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_E ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Gm), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
 
     END DO
     END DO
