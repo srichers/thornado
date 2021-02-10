@@ -41,7 +41,8 @@ PROGRAM ApplicationDriver
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
-    WriteFieldsHDF, FileNumber, &
+!    FileNumber, &
+    WriteFieldsHDF, &
     ReadFieldsHDF
   USE FluidFieldsModule, ONLY: &
     uCF, &
@@ -432,9 +433,9 @@ PROGRAM ApplicationDriver
   !$ACC UPDATE DEVICE(    uCF )
 #endif
 
-#if defined(THORNADO_OACC)
-FileNumber = 1
-#endif
+!#if defined(THORNADO_OACC)
+!FileNumber = 1
+!#endif
 
 !    IF( RestartFileNumber .LT. 0 )THEN
 

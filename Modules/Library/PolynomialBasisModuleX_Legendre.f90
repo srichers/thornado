@@ -31,6 +31,13 @@ MODULE PolynomialBasisModuleX_Legendre
   PUBLIC :: InitializePolynomialBasisX_Legendre
   PUBLIC :: evalPX
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET( MassPX )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE( MassPX )
+#endif
+
+
 CONTAINS
 
 
@@ -156,6 +163,12 @@ CONTAINS
     END DO
 
     MassPX = 1.0_DP / MassPX ! --- Store as Inverse
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( MassPX )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE   ( MassPX )
+#endif
 
   END SUBROUTINE ComputeMassMatrix
 
