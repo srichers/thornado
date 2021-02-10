@@ -195,6 +195,7 @@ CONTAINS
              LimiterThresholdParameter_Option = LimiterThresholdParameter )
 
     IF( Verbose )THEN
+
       WRITE(*,*)
       WRITE(*,'(A)') &
         '    INFO: Slope Limiter (Euler, Relativistic, IDEAL)'
@@ -230,6 +231,7 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
         UseConservativeCorrection
+
     END IF
 
     I_6x6 = Zero
