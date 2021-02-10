@@ -571,28 +571,6 @@ CONTAINS
            ( 'N', 'N', nDOFX, nCF_BE1, nDOFX, One, Kij_X, nDOFX, &
              U_N, nDOFX, Zero, U_M, nDOFX )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B1, iX_E1, U_M, MassPX )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
-#endif
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
-    DO iCF = 1, nCF
-    DO iNX = 1, nDOFX
-
-      U_M(iNX,iCF,iX1,iX2,iX3) = U_M(iNX,iCF,iX1,iX2,iX3) * MassPX(iNX)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
     CALL TimersStop_Euler( Timer_Euler_SL_Mapping )
 
     CALL TimersStart_Euler( Timer_Euler_SL_LimitCells )
@@ -1123,28 +1101,6 @@ CONTAINS
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nCF_BE1, nDOFX, One, Kij_X, nDOFX, &
              U_N, nDOFX, Zero, U_M, nDOFX )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B1, iX_E1, U_M, MassPX )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
-#endif
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
-    DO iCF = 1, nCF
-    DO iNX = 1, nDOFX
-
-      U_M(iNX,iCF,iX1,iX2,iX3) = U_M(iNX,iCF,iX1,iX2,iX3) * MassPX(iNX)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
 
     CALL TimersStop_Euler( Timer_Euler_SL_Mapping )
 

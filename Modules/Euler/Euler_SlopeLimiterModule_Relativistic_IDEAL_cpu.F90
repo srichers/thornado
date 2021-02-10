@@ -50,6 +50,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
     FinalizeTroubledCellIndicator_Euler, &
+    UseTroubledCellIndicator, &
     LimiterThreshold, &
     DetectTroubledCells_Euler
   USE TimersModule_Euler, ONLY: &
@@ -76,6 +77,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   ! --- TVD Limiter ---
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
+  REAL(DP) :: LimiterThresholdParameter
   REAL(DP) :: I_6x6(1:6,1:6)
 
 
@@ -108,9 +110,8 @@ CONTAINS
     CHARACTER(*), INTENT(in), OPTIONAL :: &
       SlopeLimiterMethod_Option
 
-    INTEGER  :: i
-    LOGICAL  :: Verbose, UseTroubledCellIndicator
-    REAL(DP) :: LimiterThresholdParameter
+    INTEGER :: i
+    LOGICAL :: Verbose
 
     UseSlopeLimiter = .TRUE.
     IF( PRESENT( UseSlopeLimiter_Option ) ) &
@@ -143,6 +144,7 @@ CONTAINS
     LimiterThresholdParameter = 0.03_DP
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
       LimiterThresholdParameter = LimiterThresholdParameter_Option
+    LimiterThreshold = LimiterThresholdParameter * Two**( nNodes - 2 )
 
     UseConservativeCorrection = .TRUE.
     IF( PRESENT( UseConservativeCorrection_Option ) ) &
@@ -151,10 +153,6 @@ CONTAINS
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
-
-    CALL InitializeTroubledCellIndicator_Euler &
-           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
-             LimiterThresholdParameter_Option = LimiterThresholdParameter )
 
     IF( Verbose )THEN
       WRITE(*,*)
@@ -193,6 +191,8 @@ CONTAINS
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
         UseConservativeCorrection
     END IF
+
+    CALL InitializeTroubledCellIndicator_Euler
 
     I_6x6 = Zero
     DO i = 1, 6
@@ -280,7 +280,7 @@ CONTAINS
                                 iX_B0(3):iX_E0(3))
     LOGICAL  :: SuppressBC
     LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
-    INTEGER  :: iX1, iX2, iX3, iCF, iNX, jNX
+    INTEGER  :: iX1, iX2, iX3, iCF
     INTEGER  :: iApplyBC(3)
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
@@ -834,7 +834,8 @@ CONTAINS
 
   SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
-    CALL FinalizeTroubledCellIndicator_Euler
+    IF( UseTroubledCellIndicator ) &
+      CALL FinalizeTroubledCellIndicator_Euler
 
     IF( TRIM( SlopeLimiterMethod ) .EQ. 'WENO' )THEN
 
