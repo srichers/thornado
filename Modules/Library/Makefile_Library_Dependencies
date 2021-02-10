@@ -81,7 +81,7 @@ PolynomialBasisModuleX_Legendre.o: \
   KindModule.o \
   QuadratureModule.o \
   ProgramHeaderModule.o \
-  PolynomialBasisModuleX_Legendre.f90
+  PolynomialBasisModuleX_Legendre.F90
 
 PolynomialBasisModuleZ_Lagrange.o: \
   KindModule.o \
@@ -134,7 +134,7 @@ PolynomialBasisMappingModule.o: \
   QuadratureModule.o \
   PolynomialBasisModule_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
-  PolynomialBasisMappingModule.f90
+  PolynomialBasisMappingModule.F90
 
 SubcellReconstructionModule.o: \
   KindModule.o \
