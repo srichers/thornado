@@ -31,7 +31,6 @@ MODULE PolynomialBasisModuleX_Legendre
   PUBLIC :: InitializePolynomialBasisX_Legendre
   PUBLIC :: evalPX
 
-
 CONTAINS
 
 
