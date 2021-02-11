@@ -1,0 +1,85 @@
+MICROPHYSICS           = WEAKLIB
+MOMENT_CLOSURE         = MAXIMUM_ENTROPY_CB
+NEUTRINO_MATTER_SOLVER = FIXED_POINT_COUPLED
+
+THORNADO_DIR ?= ../../../
+include $(THORNADO_DIR)/Build/Makefile_Build
+include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
+
+WEAKLIB_DIR ?= $(HOME)/weaklib
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
+
+VPATH += $(THORNADO_DIR)/SandBox/Interface_FLASH
+
+#DEFINES += $(PP)-DTHORNADO_DEBUG
+
+.DEFAULT_GOAL := all
+
+all: Driver
+
+Driver: \
+	$(weaklib) \
+	$(thornado) \
+	ThornadoInitializationModule.o \
+	TimeSteppingModule_Flash.o \
+	Driver.o
+	$(FLINKER) $(FLAGS) -o Driver_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	ThornadoInitializationModule.o \
+	TimeSteppingModule_Flash.o \
+	Driver.o \
+	$(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f Driver_$(MACHINE)
+
+
+Driver.o: \
+  KindModule.o \
+  UnitsModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  ThornadoInitializationModule.o \
+  TimeSteppingModule_Flash.o \
+  SubcellReconstructionModule.o \
+  Driver.f90
+
+ThornadoInitializationModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  DeviceModule.o \
+  TimersModule.o \
+  QuadratureModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModule.o \
+  PolynomialBasisModuleX_Lagrange.o \
+  PolynomialBasisModule_Lagrange.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModuleE_Lagrange.o \
+  ReferenceElementModule_Lagrange.o \
+  SubcellReconstructionModule.o \
+  EquationOfStateModule_TABLE.o \
+  EquationOfStateModule_IDEAL.o \
+  OpacityModule_TABLE.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryComputationModuleE.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_PositivityLimiterModule_Old.o \
+  TwoMoment_MeshRefinementModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
+  ThornadoInitializationModule.F90
+
