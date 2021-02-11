@@ -41,7 +41,7 @@ PROGRAM ApplicationDriver
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
-!    FileNumber, &
+    FileNumber, &
     WriteFieldsHDF, &
     ReadFieldsHDF
   USE FluidFieldsModule, ONLY: &
@@ -224,8 +224,8 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 32, 1, 1 ]
-      swX = [ 1, 0, 0 ]
+      nX  = [ 32, 32, 32 ]
+      swX = [ 1, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -428,19 +428,25 @@ PROGRAM ApplicationDriver
            Eblast_Option    = Eblast )
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE TO( uCF )
+  !$OMP TARGET UPDATE TO( uCF, uGF )
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE DEVICE(    uCF )
+  !$ACC UPDATE DEVICE(    uCF, uGF )
 #endif
 
-!#if defined(THORNADO_OACC)
-!FileNumber = 1
-!#endif
+#if defined(THORNADO_OACC)
+FileNumber = 1
+#endif
 
 !    IF( RestartFileNumber .LT. 0 )THEN
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( uCF )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST       ( uCF )
+#endif
 
 !      CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
 !             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )

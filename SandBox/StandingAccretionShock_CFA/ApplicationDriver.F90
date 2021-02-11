@@ -42,6 +42,7 @@ PROGRAM ApplicationDriver
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
+    FileNumber, &
     WriteFieldsHDF, &
     ReadFieldsHDF,  &
     WriteAccretionShockDiagnosticsHDF
@@ -137,7 +138,7 @@ PROGRAM ApplicationDriver
 
   Gamma = 4.0e0_DP / 3.0e0_DP
   t_end = 3.0e2_DP * Millisecond
-  bcX = [ 100, 0, 0 ]
+  bcX = [ 100, 3, 0 ]
 
   MassPNS            = 1.4_DP    * SolarMass
   RadiusPNS          = 40.0_DP   * Kilometer
@@ -151,8 +152,8 @@ PROGRAM ApplicationDriver
   rPerturbationInner    = 260.0_DP * Kilometer
   rPerturbationOuter    = 280.0_DP * Kilometer
 
-  nX  = [ 960, 1, 1 ]
-  swX = [ 1, 0, 0 ]
+  nX  = [ 32, 32, 1 ]
+  swX = [ 1, 1, 0 ]
   xL  = [ RadiusPNS, 0.0_DP, 0.0_DP ]
   xR  = [ 1.0e3_DP * Kilometer, Pi, TwoPi ]
 
@@ -168,7 +169,7 @@ PROGRAM ApplicationDriver
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 1
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -182,13 +183,13 @@ PROGRAM ApplicationDriver
   BetaTVB                   = 0.0d0
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
-  UseTroubledCellIndicator  = .TRUE.
+  UseTroubledCellIndicator  = .FALSE.
   LimiterThresholdParameter = 0.015_DP
   UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
 
-  UsePositivityLimiter = .TRUE.
+  UsePositivityLimiter = .FALSE.
   Min_1                = 1.0d-13
   Min_2                = 1.0d-13
 
@@ -274,6 +275,7 @@ PROGRAM ApplicationDriver
   !$OMP TARGET UPDATE TO( uCF, uGF )
 #elif defined(THORNADO_OACC)
   !$ACC UPDATE DEVICE(    uCF, uGF )
+  FileNumber = 1
 #endif
 
   IF( RestartFileNumber .LT. 0 )THEN
@@ -282,13 +284,13 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uCF, uDF )
+  !$OMP TARGET UPDATE FROM( uCF )
 #elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST       ( uCF, uDF )
+  !$ACC UPDATE HOST       ( uCF )
 #endif
 
-    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+!    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET UPDATE TO( uCF )
@@ -331,103 +333,103 @@ PROGRAM ApplicationDriver
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
-  iCycle = 0
-  Timer_Evolution = MPI_WTIME()
-  DO WHILE( t .LT. t_end )
-
-    iCycle = iCycle + 1
-
-    CALL ComputeTimeStep_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             uGF, uCF, &
-             CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             dt )
-
-    IF( t + dt .LT. t_end )THEN
-
-      t = t + dt
-
-    ELSE
-
-      dt = t_end - t
-      t  = t_end
-
-    END IF
-
-    IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
-
-      WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
-        'Cycle: ', iCycle, ' t = ', t / UnitsDisplay % TimeUnit, &
-        TRIM( UnitsDisplay % TimeLabel ), &
-        ' dt = ', dt /  UnitsDisplay % TimeUnit, &
-        TRIM( UnitsDisplay % TimeLabel )
-
-    END IF
-
-    CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, &
-             ComputeIncrement_Euler_DG_Explicit )
-
-    IF( iCycleW .GT. 0 )THEN
-
-      IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
-        wrt = .TRUE.
-
-    ELSE
-
-      IF( t + dt .GT. t_wrt )THEN
-
-        t_wrt = t_wrt + dt_wrt
-        wrt   = .TRUE.
-
-      END IF
-
-    END IF
-
-    IF( wrt )THEN
-
-      CALL TimersStart_Euler( Timer_Euler_InputOutput )
-
-      CALL ComputeFromConserved_Euler_Relativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-      CALL WriteFieldsHDF &
-             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
-
-      CALL ComputeTally_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
-
-      wrt = .FALSE.
-
-      CALL TimersStop_Euler( Timer_Euler_InputOutput )
-
-    END IF
-
-!!$    CALL ComputeFromConserved_Euler_Relativistic &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-!!$
-!!$    CALL ComputeAccretionShockDiagnostics &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
-!!$
-!!$    CALL WriteAccretionShockDiagnosticsHDF( t, Power )
-
-  END DO
-
-  Timer_Evolution = MPI_WTIME() - Timer_Evolution
-  WRITE(*,*)
-  WRITE(*,'(A,ES13.6E3,A)') 'Total evolution time: ', Timer_Evolution, ' s'
-  WRITE(*,*)
-
-  CALL TimersStart_Euler( Timer_Euler_Finalize )
-
-  CALL ComputeFromConserved_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-  CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
-
-  CALL ComputeTally_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+!  iCycle = 0
+!  Timer_Evolution = MPI_WTIME()
+!  DO WHILE( t .LT. t_end )
+!
+!    iCycle = iCycle + 1
+!
+!    CALL ComputeTimeStep_Euler_Relativistic &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+!             uGF, uCF, &
+!             CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
+!             dt )
+!
+!    IF( t + dt .LT. t_end )THEN
+!
+!      t = t + dt
+!
+!    ELSE
+!
+!      dt = t_end - t
+!      t  = t_end
+!
+!    END IF
+!
+!    IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
+!
+!      WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
+!        'Cycle: ', iCycle, ' t = ', t / UnitsDisplay % TimeUnit, &
+!        TRIM( UnitsDisplay % TimeLabel ), &
+!        ' dt = ', dt /  UnitsDisplay % TimeUnit, &
+!        TRIM( UnitsDisplay % TimeLabel )
+!
+!    END IF
+!
+!    CALL UpdateFluid_SSPRK &
+!           ( t, dt, uGF, uCF, uDF, &
+!             ComputeIncrement_Euler_DG_Explicit )
+!
+!    IF( iCycleW .GT. 0 )THEN
+!
+!      IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
+!        wrt = .TRUE.
+!
+!    ELSE
+!
+!      IF( t + dt .GT. t_wrt )THEN
+!
+!        t_wrt = t_wrt + dt_wrt
+!        wrt   = .TRUE.
+!
+!      END IF
+!
+!    END IF
+!
+!    IF( wrt )THEN
+!
+!      CALL TimersStart_Euler( Timer_Euler_InputOutput )
+!
+!      CALL ComputeFromConserved_Euler_Relativistic &
+!             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+!
+!      CALL WriteFieldsHDF &
+!             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+!
+!      CALL ComputeTally_Euler_Relativistic &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
+!
+!      wrt = .FALSE.
+!
+!      CALL TimersStop_Euler( Timer_Euler_InputOutput )
+!
+!    END IF
+!
+!!!$    CALL ComputeFromConserved_Euler_Relativistic &
+!!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+!!!$
+!!!$    CALL ComputeAccretionShockDiagnostics &
+!!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
+!!!$
+!!!$    CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+!
+!  END DO
+!
+!  Timer_Evolution = MPI_WTIME() - Timer_Evolution
+!  WRITE(*,*)
+!  WRITE(*,'(A,ES13.6E3,A)') 'Total evolution time: ', Timer_Evolution, ' s'
+!  WRITE(*,*)
+!
+!  CALL TimersStart_Euler( Timer_Euler_Finalize )
+!
+!  CALL ComputeFromConserved_Euler_Relativistic &
+!         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+!
+!  CALL WriteFieldsHDF &
+!         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+!
+!  CALL ComputeTally_Euler_Relativistic &
+!         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
   CALL FinalizeTally_Euler_Relativistic
 
@@ -449,21 +451,21 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeTimers_Euler
 
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git info'
-  WRITE(*,'(2x,A)') '--------'
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git branch:'
-  CALL EXECUTE_COMMAND_LINE( 'git branch' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git describe --tags:'
-  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
-  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'date:'
-  CALL EXECUTE_COMMAND_LINE( 'date' )
-  WRITE(*,*)
+!  WRITE(*,*)
+!  WRITE(*,'(2x,A)') 'git info'
+!  WRITE(*,'(2x,A)') '--------'
+!  WRITE(*,*)
+!  WRITE(*,'(2x,A)') 'git branch:'
+!  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+!  WRITE(*,*)
+!  WRITE(*,'(2x,A)') 'git describe --tags:'
+!  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+!  WRITE(*,*)
+!  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+!  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+!  WRITE(*,*)
+!  WRITE(*,'(2x,A)') 'date:'
+!  CALL EXECUTE_COMMAND_LINE( 'date' )
+!  WRITE(*,*)
 
 END PROGRAM ApplicationDriver

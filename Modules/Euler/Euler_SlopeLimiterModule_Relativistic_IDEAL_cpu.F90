@@ -50,7 +50,6 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
     FinalizeTroubledCellIndicator_Euler, &
-    UseTroubledCellIndicator, &
     LimiterThreshold, &
     DetectTroubledCells_Euler
   USE TimersModule_Euler, ONLY: &
@@ -111,7 +110,7 @@ CONTAINS
       SlopeLimiterMethod_Option
 
     INTEGER :: i
-    LOGICAL :: Verbose
+    LOGICAL :: Verbose, UseTroubledCellIndicator
 
     UseSlopeLimiter = .TRUE.
     IF( PRESENT( UseSlopeLimiter_Option ) ) &
@@ -144,7 +143,6 @@ CONTAINS
     LimiterThresholdParameter = 0.03_DP
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
       LimiterThresholdParameter = LimiterThresholdParameter_Option
-    LimiterThreshold = LimiterThresholdParameter * Two**( nNodes - 2 )
 
     UseConservativeCorrection = .TRUE.
     IF( PRESENT( UseConservativeCorrection_Option ) ) &
@@ -153,6 +151,10 @@ CONTAINS
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
+
+    CALL InitializeTroubledCellIndicator_Euler &
+           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
+             LimiterThresholdParameter_Option = LimiterThresholdParameter )
 
     IF( Verbose )THEN
       WRITE(*,*)
@@ -191,8 +193,6 @@ CONTAINS
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
         UseConservativeCorrection
     END IF
-
-    CALL InitializeTroubledCellIndicator_Euler
 
     I_6x6 = Zero
     DO i = 1, 6
@@ -834,8 +834,7 @@ CONTAINS
 
   SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
-    IF( UseTroubledCellIndicator ) &
-      CALL FinalizeTroubledCellIndicator_Euler
+    CALL FinalizeTroubledCellIndicator_Euler
 
     IF( TRIM( SlopeLimiterMethod ) .EQ. 'WENO' )THEN
 
