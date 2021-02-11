@@ -24,6 +24,7 @@ MODULE SubcellReconstructionModule
 
   REAL(DP), ALLOCATABLE, PUBLIC :: ProjectionMatrix(:,:)
   REAL(DP), ALLOCATABLE, PUBLIC :: ReconstructionMatrix(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: Phi_ijq(:,:,:)
 
 CONTAINS
 
@@ -45,6 +46,7 @@ CONTAINS
     REAL(DP) :: r_l, r_r, r_q1, r_q2
 
     ALLOCATE( ProjectionMatrix(nDOFX,nDOFX) )
+    ALLOCATE( Phi_ijq(nDOFX,nDOFX,nDOFX) )
 
     ProjectionMatrix = Zero
 
@@ -86,6 +88,8 @@ CONTAINS
                     * L_X1(IndLX_Q(1,jS)) % P( Eta_X1(iN1) ) &
                     * L_X2(IndLX_Q(2,jS)) % P( Eta_X2(iN2) ) &
                     * L_X3(IndLX_Q(3,jS)) % P( Eta_X3(iN3) )
+
+          Phi_ijq(iS,jS,iN1) = L_X1(IndLX_Q(1,jS)) % P( Eta_X1(iN1) )
 
         END DO
         END DO
@@ -190,9 +194,9 @@ CONTAINS
   END SUBROUTINE InitializeSubcellReconstruction
 
 
-  SUBROUTINE UpdateSubcellReconstruction( iX )
+  SUBROUTINE UpdateSubcellReconstruction( iXs )
 
-    INTEGER, INTENT(in) :: iX
+    INTEGER, INTENT(in) :: iXs(3)
 
     INTEGER  :: iS1, iS2, iS3, iS
     INTEGER  :: jS1, jS2, jS3, jS
@@ -204,13 +208,12 @@ CONTAINS
     INTEGER  :: iX1, nNodes
     REAL(DP) :: r_l, r_r, r_q1, r_q2
 
-
     IF( TRIM( CoordinateSystem ) .eq. 'SPHERICAL')THEN
 
-      iX1 = iX
+      iX1 = iXs(1)
       ! Use the mirror physical cell for ghost cell at origin radius
-      IF( MeshX(1) % Center( iX ) < 0.0 ) &
-        iX1 = iX_B0(1) - iX
+      IF( MeshX(1) % Center( iXs(1) ) < 0.0 ) &
+        iX1 = iX_B0(1) - iXs(1)
 
     iS = 0
     DO iS3 = 1, nNodesX(3)
@@ -244,7 +247,6 @@ CONTAINS
           r_q2 = MeshX(1) % Center(iX1) + MeshX(1) % Width(iX1) * MeshX(1) % Nodes(1)
         END IF
 
-        !!$WRITE(*,'(2I4,4ES12.3)') iS, jS, r_l, r_q1, r_q2, r_r
 
         ProjectionMatrix(iS,jS) &
         =  3.0e0 * ( r_r**4 - r_l**4 ) &
@@ -296,6 +298,7 @@ CONTAINS
 
     DEALLOCATE( ProjectionMatrix )
     DEALLOCATE( ReconstructionMatrix )
+    DEALLOCATE( Phi_ijq )
 
   END SUBROUTINE FinalizeSubcellReconstruction
 
