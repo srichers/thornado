@@ -67,6 +67,11 @@ PROGRAM Driver
 
   wTime = MPI_WTIME( )
 
+  WRITE(*,*) 'In Cartesian coordinate:'
+  WRITE(*,'(A25,4ES12.3)') 'ProjectionMatrix', ProjectionMatrix
+
+  WRITE(*,*)
+  WRITE(*,*) 'In Spherical polar coordinate: '
   DO i = 1, 1
 
     CALL InitThornado_Patch &
@@ -90,34 +95,41 @@ PROGRAM Driver
 
       DO iS = 1, nN
 
+        ! the low bry of the subcell
         Subcell_Lo = MeshX(1) % Center(iX1) + (iS - 2) * MeshX(1) % Width(iX1) * Half
 
-        ! integral for volume Si
+        ! --- integral for volume Si ---
         Volume_Si = 0.0_DP
-
         DO iQ = 1, nNodesX(1)
+          ! quadrature point location
           SQRTGamma_iq = Subcell_Lo &
             + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
+          ! sqrt gamma, which = 1 for cartesian
           SQRTGamma_iq = SQRTGamma_iq**2
+          ! integral with sqrt gamma, Volume_Si = 1 for cartesian
           Volume_Si = Volume_Si + WeightsX1(iQ) * SQRTGamma_iq
         END DO
 
         DO jS = 1, nN
 
-        ! integral for Phi_j at ith subcell
-        Inte_Phi_ij = 0.0_DP
-        DO iQ = 1, nN
-          SQRTGamma_iq = Subcell_Lo &
-          + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
-          SQRTGamma_iq = SQRTGamma_iq**2
-          Inte_Phi_ij = Inte_Phi_ij &
-            + WeightsX1(iQ) * SQRTGamma_iq * Phi_ijq(iS,jS,iQ) 
-        END DO
-
-        New_ProjectionMatrix(iS, jS) = Inte_Phi_ij / Volume_Si
+          ! --- integral for Phi_j at ith subcell ---
+          Inte_Phi_ij = 0.0_DP
+          DO iQ = 1, nN
+            ! quadrature point location
+            SQRTGamma_iq = Subcell_Lo &
+            + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
+            ! sqrt gamma
+            SQRTGamma_iq = SQRTGamma_iq**2
+            ! integral wt sqrt gamma
+            Inte_Phi_ij = Inte_Phi_ij &
+              + WeightsX1(iQ) * SQRTGamma_iq * Phi_ijq(iS,jS,iQ) 
+          END DO
+  
+          New_ProjectionMatrix(iS,jS) = Inte_Phi_ij / Volume_Si
 
         END DO
       END DO
+
       WRITE(*,'(A25,4ES12.3)') 'New_ProjectionMatrix', New_ProjectionMatrix
 
     END DO
