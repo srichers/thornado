@@ -25,7 +25,7 @@ PROGRAM Driver
     Update_IMEX_PDARS
   USE SubcellReconstructionModule, ONLY: &
     UpdateSubcellReconstruction, &
-    Phi_ijq
+    Phi_ijq, ProjectionMatrix
   USE MeshModule, ONLY: &
     MeshX
   USE ReferenceElementModuleX, ONLY: &
@@ -42,11 +42,14 @@ PROGRAM Driver
   INTEGER  :: i, iDOFX, iX1, iQ, iS, jS
   INTEGER  :: mpierr
   INTEGER, PARAMETER  :: nN = 2
+  INTEGER  :: nX(3)
   REAL(DP) :: wTime
   REAL(DP) :: dt
   REAL(DP) :: Volume_Si, SQRTGamma_iq, Inte_Phi_ij
-  REAL(DP) :: Mannue_ProjectionMatrix(nN,nN)
+  REAL(DP) :: New_ProjectionMatrix(nN,nN)
   REAL(DP) :: Subcell_Lo, Subcell_Width
+
+  nX = [12, 1, 1]
 
   CALL MPI_INIT( mpierr )
 
@@ -67,54 +70,57 @@ PROGRAM Driver
   DO i = 1, 1
 
     CALL InitThornado_Patch &
-           ( nX    = [ 12, 1, 1 ], &
+           ( nX    = nX, &
              swX   = [ 0, 0, 0 ], &
              xL    = [ 00.0_DP            , 00.0_DP, 00.0_DP ], &
              xR    = [ 12.0_DP * Kilometer, Pi     , TwoPi ], &
              nSpecies = 1, CoordinateSystem_Option = 'spherical' )
 
-    iX1 = 2  ! For cell = iX1
-    CALL UpdateSubcellReconstruction( [iX1, 1, 1] )
+    DO iX1 = 1, nX(1)
 
-    WRITE(*,*)
+      WRITE(*,'(A25,I5)') 'iX1', iX1
 
-    WRITE(*,*) ' Mannuelly Compute for 1D case:'
-    Mannue_ProjectionMatrix = Zero
+      CALL UpdateSubcellReconstruction( [iX1, 1, 1] )
 
-    Subcell_Width = MeshX(1) % Width(iX1) / nNodesX(1)
+      WRITE(*,'(A25,4ES12.3)') 'ProjectionMatrix', ProjectionMatrix
 
-    DO iS = 1, nN
+      New_ProjectionMatrix = Zero
 
-      Subcell_Lo = MeshX(1) % Center(iX1) + (iS - 2) * MeshX(1) % Width(iX1) * Half
+      Subcell_Width = MeshX(1) % Width(iX1) / nNodesX(1)
 
-      ! integral for volume Si
-      Volume_Si = 0.0_DP
+      DO iS = 1, nN
 
-      DO iQ = 1, nNodesX(1)
-        SQRTGamma_iq = Subcell_Lo &
+        Subcell_Lo = MeshX(1) % Center(iX1) + (iS - 2) * MeshX(1) % Width(iX1) * Half
+
+        ! integral for volume Si
+        Volume_Si = 0.0_DP
+
+        DO iQ = 1, nNodesX(1)
+          SQRTGamma_iq = Subcell_Lo &
+            + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
+          SQRTGamma_iq = SQRTGamma_iq**2
+          Volume_Si = Volume_Si + WeightsX1(iQ) * SQRTGamma_iq
+        END DO
+
+        DO jS = 1, nN
+
+        ! integral for Phi_j at ith subcell
+        Inte_Phi_ij = 0.0_DP
+        DO iQ = 1, nN
+          SQRTGamma_iq = Subcell_Lo &
           + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
-        SQRTGamma_iq = SQRTGamma_iq**2
-        Volume_Si = Volume_Si + WeightsX1(iQ) * SQRTGamma_iq
+          SQRTGamma_iq = SQRTGamma_iq**2
+          Inte_Phi_ij = Inte_Phi_ij &
+            + WeightsX1(iQ) * SQRTGamma_iq * Phi_ijq(iS,jS,iQ) 
+        END DO
+
+        New_ProjectionMatrix(iS, jS) = Inte_Phi_ij / Volume_Si
+
+        END DO
       END DO
+      WRITE(*,'(A25,4ES12.3)') 'New_ProjectionMatrix', New_ProjectionMatrix
 
-      DO jS = 1, nN
-
-      ! integral for Phi_j at ith subcell
-      Inte_Phi_ij = 0.0_DP
-      DO iQ = 1, nNodesX(1)
-        SQRTGamma_iq = Subcell_Lo &
-        + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
-        SQRTGamma_iq = SQRTGamma_iq**2
-        Inte_Phi_ij = Inte_Phi_ij &
-          + WeightsX1(iQ) * SQRTGamma_iq * Phi_ijq(iS,jS,iQ) 
-      END DO
-
-      Mannue_ProjectionMatrix(iS, jS) = Inte_Phi_ij / Volume_Si
-     ! WRITE(*,*) 'Inte_Phi',iS, jS, Mannue_ProjectionMatrix(iS, jS)
-
-      END DO
     END DO
-    WRITE(*,'(A25,4ES12.3)') 'Mannue_ProjectionMatrix', Mannue_ProjectionMatrix
 
     CALL FreeThornado_Patch
 
