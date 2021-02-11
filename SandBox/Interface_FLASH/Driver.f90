@@ -72,71 +72,69 @@ PROGRAM Driver
 
   WRITE(*,*)
   WRITE(*,*) 'In Spherical polar coordinate: '
-  DO i = 1, 1
 
-    CALL InitThornado_Patch &
-           ( nX    = nX, &
-             swX   = [ 0, 0, 0 ], &
-             xL    = [ 00.0_DP            , 00.0_DP, 00.0_DP ], &
-             xR    = [ 12.0_DP * Kilometer, Pi     , TwoPi ], &
-             nSpecies = 1, CoordinateSystem_Option = 'spherical' )
+  CALL InitThornado_Patch &
+         ( nX    = nX, &
+           swX   = [ 0, 0, 0 ], &
+           xL    = [ 00.0_DP            , 00.0_DP, 00.0_DP ], &
+           xR    = [ 12.0_DP * Kilometer, Pi     , TwoPi ], &
+           nSpecies = 1, CoordinateSystem_Option = 'spherical' )
 
-    DO iX1 = 1, nX(1)
+  DO iX1 = 1, nX(1) ! loop over all cells
 
-      WRITE(*,'(A25,I5)') 'iX1', iX1
+    WRITE(*,'(A25,I5)') 'iX1', iX1
 
-      CALL UpdateSubcellReconstruction( [iX1, 1, 1] )
+    CALL UpdateSubcellReconstruction( [iX1, 1, 1] )
 
-      WRITE(*,'(A25,4ES12.3)') 'ProjectionMatrix', ProjectionMatrix
+    WRITE(*,'(A25,4ES12.3)') 'ProjectionMatrix', ProjectionMatrix
 
-      New_ProjectionMatrix = Zero
+    New_ProjectionMatrix = Zero
 
-      Subcell_Width = MeshX(1) % Width(iX1) / nNodesX(1)
+    Subcell_Width = MeshX(1) % Width(iX1) / nNodesX(1)
 
-      DO iS = 1, nN
+    DO iS = 1, nN
 
-        ! the low bry of the subcell
-        Subcell_Lo = MeshX(1) % Center(iX1) + (iS - 2) * MeshX(1) % Width(iX1) * Half
+      ! the low bry of the subcell
+      Subcell_Lo = MeshX(1) % Center(iX1) + (iS - 2) * MeshX(1) % Width(iX1) * Half
 
-        ! --- integral for volume Si ---
-        Volume_Si = 0.0_DP
-        DO iQ = 1, nNodesX(1)
-          ! quadrature point location
-          SQRTGamma_iq = Subcell_Lo &
-            + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
-          ! sqrt gamma, which = 1 for cartesian
-          SQRTGamma_iq = SQRTGamma_iq**2
-          ! integral with sqrt gamma, Volume_Si = 1 for cartesian
-          Volume_Si = Volume_Si + WeightsX1(iQ) * SQRTGamma_iq
-        END DO
-
-        DO jS = 1, nN
-
-          ! --- integral for Phi_j at ith subcell ---
-          Inte_Phi_ij = 0.0_DP
-          DO iQ = 1, nN
-            ! quadrature point location
-            SQRTGamma_iq = Subcell_Lo &
-            + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
-            ! sqrt gamma
-            SQRTGamma_iq = SQRTGamma_iq**2
-            ! integral wt sqrt gamma
-            Inte_Phi_ij = Inte_Phi_ij &
-              + WeightsX1(iQ) * SQRTGamma_iq * Phi_ijq(iS,jS,iQ) 
-          END DO
-  
-          New_ProjectionMatrix(iS,jS) = Inte_Phi_ij / Volume_Si
-
-        END DO
+      ! --- integral for volume Si ---
+      Volume_Si = 0.0_DP
+      DO iQ = 1, nNodesX(1)
+        ! quadrature point location
+        SQRTGamma_iq = Subcell_Lo &
+          + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
+        ! sqrt gamma, which = 1 for cartesian
+        SQRTGamma_iq = SQRTGamma_iq**2
+        ! integral with sqrt gamma, Volume_Si = 1 for cartesian
+        Volume_Si = Volume_Si + WeightsX1(iQ) * SQRTGamma_iq
       END DO
 
-      WRITE(*,'(A25,4ES12.3)') 'New_ProjectionMatrix', New_ProjectionMatrix
+      DO jS = 1, nN
 
+        ! --- integral for Phi_j at ith subcell ---
+        Inte_Phi_ij = 0.0_DP
+        DO iQ = 1, nN
+          ! quadrature point location
+          SQRTGamma_iq = Subcell_Lo &
+          + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
+          ! sqrt gamma
+          SQRTGamma_iq = SQRTGamma_iq**2
+          ! integral wt sqrt gamma
+          Inte_Phi_ij = Inte_Phi_ij &
+            + WeightsX1(iQ) * SQRTGamma_iq * Phi_ijq(iS,jS,iQ) 
+        END DO
+
+        New_ProjectionMatrix(iS,jS) = Inte_Phi_ij / Volume_Si
+
+      END DO
     END DO
 
-    CALL FreeThornado_Patch
+    WRITE(*,'(A25,4ES12.3)') 'New_ProjectionMatrix', New_ProjectionMatrix
 
   END DO
+
+  CALL FreeThornado_Patch
+
 
   wTime = MPI_WTIME( ) - wTime
 
