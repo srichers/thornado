@@ -1,7 +1,7 @@
 PROGRAM Driver
 
   USE KindModule, ONLY: &
-    DP
+    DP, Pi, TwoPi, Half, Zero
   USE UnitsModule, ONLY: &
     Gram, &
     Centimeter, &
@@ -12,7 +12,7 @@ PROGRAM Driver
   USE GeometryFieldsModuleE, ONLY: &
     uGE
   USE GeometryFieldsModule, ONLY: &
-    uGF
+    uGF, iGF_SqrtGm, iGF_h_1, iGF_h_2, iGF_h_3
   USE FluidFieldsModule, ONLY: &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
   USE RadiationFieldsModule, ONLY: &
@@ -23,23 +23,38 @@ PROGRAM Driver
     FreeThornado_Patch    ! --- To be called once per parch
   USE TimeSteppingModule_Flash, ONLY: &
     Update_IMEX_PDARS
+  USE SubcellReconstructionModule, ONLY: &
+    UpdateSubcellReconstruction, &
+    Phi_ijq
+  USE MeshModule, ONLY: &
+    MeshX
+  USE ReferenceElementModuleX, ONLY: &
+    NodesX1, WeightsX1, &
+    NodesX2, WeightsX2, &
+    NodesX3, WeightsX3
+  USE ProgramHeaderModule, ONLY: &
+    nNodesX
 
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
 
-  INTEGER  :: i
+  INTEGER  :: i, iDOFX, iX1, iQ, iS, jS
   INTEGER  :: mpierr
+  INTEGER, PARAMETER  :: nN = 2
   REAL(DP) :: wTime
   REAL(DP) :: dt
+  REAL(DP) :: Volume_Si, SQRTGamma_iq, Inte_Phi_ij
+  REAL(DP) :: Mannue_ProjectionMatrix(nN,nN)
+  REAL(DP) :: Subcell_Lo, Subcell_Width
 
   CALL MPI_INIT( mpierr )
 
   wTime = MPI_WTIME( )
 
   CALL InitThornado &
-         ( nDimsX = 3, nE = 10, swE = 0, eL_in = 0.0d0, eR_in = 1.0d2, &
-           zoomE = 1.0_DP, nSpecies_in = 1 )
+         ( nNodes = nN, nDimsX = 1, nE = 10, swE = 0, &
+           eL_MeV = 0.0d0, eR_MeV = 1.0d2, zoomE = 1.0_DP )
 
   wTime = MPI_WTIME( ) - wTime
 
@@ -49,29 +64,57 @@ PROGRAM Driver
 
   wTime = MPI_WTIME( )
 
-  DO i = 1, 2
+  DO i = 1, 1
 
     CALL InitThornado_Patch &
-           ( nX    = [ 12, 12, 12 ], &
-             swX   = [ 2, 2, 2 ], &
-             xL    = [ 00.0_DP, 00.0_DP, 00.0_DP ] * Kilometer, &
-             xR    = [ 16.0_DP, 16.0_DP, 16.0_DP ] * Kilometer )
+           ( nX    = [ 12, 1, 1 ], &
+             swX   = [ 0, 0, 0 ], &
+             xL    = [ 00.0_DP            , 00.0_DP, 00.0_DP ], &
+             xR    = [ 12.0_DP * Kilometer, Pi     , TwoPi ], &
+             nSpecies = 1, CoordinateSystem_Option = 'spherical' )
 
-    dt = 1.0d-4 * Millisecond
+    iX1 = 2  ! For cell = iX1
+    CALL UpdateSubcellReconstruction( [iX1, 1, 1] )
 
-!    uCR(:,:,:,:,:,iCR_N, :) = 0.9_DP
-!    uCR(:,:,:,:,:,iCR_G1,:) = 0.0_DP
-!    uCR(:,:,:,:,:,iCR_G2,:) = 0.0_DP
-!    uCR(:,:,:,:,:,iCR_G3,:) = 0.0_DP
+    WRITE(*,*)
 
-!    uCF(:,:,:,:,iCF_D)  = 1.0d14 * Gram / Centimeter**3
-!    uCF(:,:,:,:,iCF_S1) = 0.0_DP
-!    uCF(:,:,:,:,iCF_S2) = 0.0_DP
-!    uCF(:,:,:,:,iCF_S3) = 0.0_DP
-!    uCF(:,:,:,:,iCF_E)  = 4.5d33 * Erg / Centimeter**3
-!    uCF(:,:,:,:,iCF_Ne) = 2.0d37 / Centimeter**3
+    WRITE(*,*) ' Mannuelly Compute for 1D case:'
+    Mannue_ProjectionMatrix = Zero
 
-!    CALL Update_IMEX_PDARS( dt, uCF, uCR )
+    Subcell_Width = MeshX(1) % Width(iX1) / nNodesX(1)
+
+    DO iS = 1, nN
+
+      Subcell_Lo = MeshX(1) % Center(iX1) + (iS - 2) * MeshX(1) % Width(iX1) * Half
+
+      ! integral for volume Si
+      Volume_Si = 0.0_DP
+
+      DO iQ = 1, nNodesX(1)
+        SQRTGamma_iq = Subcell_Lo &
+          + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
+        SQRTGamma_iq = SQRTGamma_iq**2
+        Volume_Si = Volume_Si + WeightsX1(iQ) * SQRTGamma_iq
+      END DO
+
+      DO jS = 1, nN
+
+      ! integral for Phi_j at ith subcell
+      Inte_Phi_ij = 0.0_DP
+      DO iQ = 1, nNodesX(1)
+        SQRTGamma_iq = Subcell_Lo &
+        + Subcell_Width * Half + NodesX1(iQ) * Subcell_Width
+        SQRTGamma_iq = SQRTGamma_iq**2
+        Inte_Phi_ij = Inte_Phi_ij &
+          + WeightsX1(iQ) * SQRTGamma_iq * Phi_ijq(iS,jS,iQ) 
+      END DO
+
+      Mannue_ProjectionMatrix(iS, jS) = Inte_Phi_ij / Volume_Si
+     ! WRITE(*,*) 'Inte_Phi',iS, jS, Mannue_ProjectionMatrix(iS, jS)
+
+      END DO
+    END DO
+    WRITE(*,'(A25,4ES12.3)') 'Mannue_ProjectionMatrix', Mannue_ProjectionMatrix
 
     CALL FreeThornado_Patch
 
