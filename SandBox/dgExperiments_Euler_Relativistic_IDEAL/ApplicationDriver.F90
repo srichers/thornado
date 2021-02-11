@@ -339,9 +339,9 @@ PROGRAM ApplicationDriver
   BetaTVB                   = 0.0_DP
   SlopeTolerance            = 1.0e-6_DP
   UseCharacteristicLimiting = .FALSE.
-  UseTroubledCellIndicator  = .FALSE.
+  UseTroubledCellIndicator  = .TRUE.
   LimiterThresholdParameter = 0.015_DP
-  UseConservativeCorrection = .FALSE.
+  UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
 
