@@ -217,32 +217,32 @@ contains
              UsePositivityLimiter_Option = PositivityLimiter, &
              Verbose_Option = Verbose )
 
-    ! --- Nuclear Equation of State ---
-#ifdef MICROPHYSICS_WEAKLIB
-    call InitializeEquationOfState_TABLE &
-           ( EquationOfStateTableName_Option &
-               = EquationOfStateTableName_Option, &
-             Verbose_Option = Verbose , &
-             External_EOS = External_EOS )
-#else
-    call InitializeEquationOfState_IDEAL &
-           ( Gamma_IDEAL_Option = Gamma_IDEAL_Option )
-#endif
-
-    ! --- Neutrino Opacities ---
-
-    call InitializeOpacities_TABLE &
-           ( OpacityTableName_EmAb_Option &
-               = OpacityTableName_EmAb_Option, &
-             OpacityTableName_Iso_Option &
-               = OpacityTableName_Iso_Option, &
-             OpacityTableName_NES_Option &
-               = OpacityTableName_NES_Option, &
-             OpacityTableName_Pair_Option &
-               = OpacityTableName_Pair_Option, &
-             EquationOfStateTableName_Option &
-               = EquationOfStateTableName_Option, &
-             Verbose_Option = Verbose )
+!    ! --- Nuclear Equation of State ---
+!#ifdef MICROPHYSICS_WEAKLIB
+!    call InitializeEquationOfState_TABLE &
+!           ( EquationOfStateTableName_Option &
+!               = EquationOfStateTableName_Option, &
+!             Verbose_Option = Verbose , &
+!             External_EOS = External_EOS )
+!#else
+!    call InitializeEquationOfState_IDEAL &
+!           ( Gamma_IDEAL_Option = Gamma_IDEAL_Option )
+!#endif
+!
+!    ! --- Neutrino Opacities ---
+!
+!    call InitializeOpacities_TABLE &
+!           ( OpacityTableName_EmAb_Option &
+!               = OpacityTableName_EmAb_Option, &
+!             OpacityTableName_Iso_Option &
+!               = OpacityTableName_Iso_Option, &
+!             OpacityTableName_NES_Option &
+!               = OpacityTableName_NES_Option, &
+!             OpacityTableName_Pair_Option &
+!               = OpacityTableName_Pair_Option, &
+!             EquationOfStateTableName_Option &
+!               = EquationOfStateTableName_Option, &
+!             Verbose_Option = Verbose )
 
     ! --- For refinement and coarsening of DG data
 
@@ -350,7 +350,7 @@ contains
            ( nX, swX, CoordinateSystem_Option = CoordinateSystem, &
              Verbose_Option = .FALSE. )
 
-    CALL ComputeGeometryX &
+    call ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
     call CreateFluidFields &
