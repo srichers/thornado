@@ -63,6 +63,12 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
   REAL(DP)              :: Min_1, Min_2
   REAL(DP), ALLOCATABLE :: U_PP(:,:), G_PP(:,:)
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET( nPP, U_PP, G_PP )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE( nPP, U_PP, G_PP )
+#endif
+
 
 CONTAINS
 
@@ -76,7 +82,6 @@ CONTAINS
 
     INTEGER :: iDim
     LOGICAL :: Verbose
-
 
     UsePositivityLimiter = .TRUE.
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
@@ -97,15 +102,17 @@ CONTAINS
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(A)') &
-        '    INFO: InitializePositivityLimiter_Euler_Relativistic_IDEAL'
+        '    INFO: Positivity Limiter (Euler, Relativistic, IDEAL)'
       WRITE(*,'(A)') &
-        '    ----------------------------------------------------------'
+        '    -----------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A6,A,L1)') &
-        '', 'Use Positivity Limiter: ', UsePositivityLimiter
+        '', 'UsePositivityLimiter: ', UsePositivityLimiter
       WRITE(*,*)
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
+      WRITE(*,'(A6,A,ES12.4E3)') &
+        '', 'Min_1 = ', Min_1
+      WRITE(*,'(A6,A,ES12.4E3)') &
+        '', 'Min_2 = ', Min_2
     END IF
 
     nPP(1:nPS) = 0
@@ -127,6 +134,12 @@ CONTAINS
     ALLOCATE( U_PP(nPT,nCF) )
     ALLOCATE( G_PP(nPT,nGF) )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( nPT, U_PP, G_PP )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE   ( nPT, U_PP, G_PP )
+#endif
+
   END SUBROUTINE InitializePositivityLimiter_Euler_Relativistic_IDEAL
 
 
@@ -145,6 +158,25 @@ CONTAINS
   !>        and velocity
   !> @todo Modify to accomodate GR
   SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL_cpu &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+!    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL_gpu &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+  END SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL
+
+
+  SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL_cpu &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER,  INTENT(in)    :: &
@@ -365,7 +397,7 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 
-  END SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL
+  END SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL_cpu
 
 
   SUBROUTINE ComputePointValues( X_Q, X_P )

@@ -442,15 +442,15 @@ FileNumber = 1
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
+    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET UPDATE FROM( uCF )
 #elif defined(THORNADO_OACC)
   !$ACC UPDATE HOST       ( uCF )
 #endif
 
-!      CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-!             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
-!
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
