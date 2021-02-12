@@ -67,10 +67,14 @@ MODULE Euler_DiscontinuityDetectionModule
     Timer_Euler_DD_TCI_CopyOut, &
     Timer_Euler_DD_TCI_Permute, &
     Timer_Euler_DD_TCI_Integrate, &
-    Timer_Euler_DD_ShockDetector, &
-    Timer_Euler_DD_ShockDetector_CopyIn, &
-    Timer_Euler_DD_ShockDetector_CopyOut, &
-    Timer_Euler_DD_ShockDetector_Permute
+    Timer_Euler_DD_SD, &
+    Timer_Euler_DD_SD_DetectShocks, &
+    Timer_Euler_DD_SD_CopyIn, &
+    Timer_Euler_DD_SD_CopyOut, &
+    Timer_Euler_DD_SD_Permute, &
+    Timer_Euler_DD_SD_Integrate, &
+    Timer_Euler_DD_SD_ComputePrimitive, &
+    Timer_Euler_DD_SD_ErrorCheck
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
@@ -493,6 +497,8 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_DD_TCI_Integrate )
 
+    CALL TimersStart_Euler( Timer_Euler_DD_TCI_DetectTroubledCells )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
@@ -559,6 +565,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_Euler( Timer_Euler_DD_TCI_DetectTroubledCells )
 
     CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyOut )
 
@@ -876,6 +884,8 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_DD_TCI_Integrate )
 
+    CALL TimersStart_Euler( Timer_Euler_DD_TCI_DetectTroubledCells )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
@@ -950,6 +960,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_Euler( Timer_Euler_DD_TCI_DetectTroubledCells )
 
     CALL TimersStart_Euler( Timer_Euler_DD_TCI_CopyOut )
 
@@ -1500,7 +1512,7 @@ CONTAINS
     INTEGER :: iX2arr(            iX_B1(2):iX_E1(2))
     INTEGER :: iX3arr(            iX_B1(3):iX_E1(3))
 
-    CALL TimersStart_Euler( Timer_Euler_DD_ShockDetector )
+    CALL TimersStart_Euler( Timer_Euler_DD_SD )
 
     nK_X = PRODUCT( [ iX_E1(1) - iX_B1(1) + 1, &
                       iX_E1(2) - iX_B1(2) + 1, &
@@ -1509,7 +1521,7 @@ CONTAINS
     nCF_X = nCF * nK_X
     nGF_X = 7   * nK_X
 
-    CALL TimersStart_Euler( Timer_Euler_DD_ShockDetector_CopyIn )
+    CALL TimersStart_Euler( Timer_Euler_DD_SD_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -1565,9 +1577,9 @@ CONTAINS
 
      END DO
 
-    CALL TimersStop_Euler( Timer_Euler_DD_ShockDetector_CopyIn )
+    CALL TimersStop_Euler( Timer_Euler_DD_SD_CopyIn )
 
-    CALL TimersStart_Euler( Timer_Euler_DD_ShockDetector_Permute )
+    CALL TimersStart_Euler( Timer_Euler_DD_SD_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -1622,7 +1634,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop_Euler( Timer_Euler_DD_ShockDetector_Permute )
+    CALL TimersStop_Euler( Timer_Euler_DD_SD_Permute )
+
+    CALL TimersStart_Euler( Timer_Euler_DD_SD_Integrate )
 
     ! --- Compute integrals ---
 
@@ -1637,6 +1651,10 @@ CONTAINS
     CALL MatrixVectorMultiply &
            ( 'T', nDOFX, nGF_X, One, G_X, nDOFX, &
              WeightsX_q, 1, Zero, GK, 1 )
+
+    CALL TimersStop_Euler( Timer_Euler_DD_SD_Integrate )
+
+    CALL TimersStart_Euler( Timer_Euler_DD_SD_ComputePrimitive )
 
     ! --- Form cell averages ---
 
@@ -1709,6 +1727,10 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_Euler( Timer_Euler_DD_SD_ComputePrimitive )
+
+    CALL TimersStart_Euler( Timer_Euler_DD_SD_DetectShocks )
 
     ! --- Shock detector, adapted from
     !     Fryxell et al., (2000), ApJS, 131, 273 ---
@@ -1788,7 +1810,9 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStart_Euler( Timer_Euler_DD_ShockDetector_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_DD_SD_DetectShocks )
+
+    CALL TimersStart_Euler( Timer_Euler_DD_SD_CopyOut )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1804,7 +1828,11 @@ CONTAINS
     !$ACC               iX1arr, iX2arr, iX3arr )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_DD_ShockDetector_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_DD_SD_CopyOut )
+
+    CALL TimersStart_Euler( Timer_Euler_DD_SD_ErrorCheck )
+
+#ifdef HYDRO_RELATIVISTIC
 
     IF( ANY( iErr .NE. 0 ) )THEN
 
@@ -1830,7 +1858,11 @@ CONTAINS
 
     END IF
 
-    CALL TimersStop_Euler( Timer_Euler_DD_ShockDetector )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_DD_SD_ErrorCheck )
+
+    CALL TimersStop_Euler( Timer_Euler_DD_SD )
 
   END SUBROUTINE DetectShocks_Euler
 
