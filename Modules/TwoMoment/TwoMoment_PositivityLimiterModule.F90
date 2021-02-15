@@ -6,7 +6,7 @@ MODULE TwoMoment_PositivityLimiterModule
   USE KindModule, ONLY: &
     DP, Zero, Half, One, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
-    nDOFZ, nDOF, nNodesZ, & ! nDOFZ = nDOF
+    nDOFZ, nDOF, nNodesZ, &
     nDOFE, nNodesE, &
     nDOFX, nNodesX
   USE TimersModule, ONLY: &
@@ -20,10 +20,9 @@ MODULE TwoMoment_PositivityLimiterModule
     Timer_PL_Theta_2, &
     Timer_PL_Out
   USE LinearAlgebraModule, ONLY: &
-    MatrixMatrixMultiply, &
-    MatrixVectorMultiply
+    MatrixMatrixMultiply
   USE ReferenceElementModule, ONLY: &
-    nDOF_E, nDOF_X1, nDOF_X2, nDOF_X3, &
+    nDOF_X1, nDOF_X2, nDOF_X3, &
     Weights_q
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
@@ -34,14 +33,10 @@ MODULE TwoMoment_PositivityLimiterModule
     LX_X2_Dn, LX_X2_Up, &
     LX_X3_Dn, LX_X3_Up
   USE ReferenceElementModule_Lagrange, ONLY: &
-    L_E_Dn,  L_E_Up,  &
     L_X1_Dn, L_X1_Up, &
     L_X2_Dn, L_X2_Up, &
     L_X3_Dn, L_X3_Up
-  USE GeometryComputationModule, ONLY: &
-    ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
     iGF_SqrtGm, nGF, iGF_h_1, iGF_h_2, iGF_h_3
   USE GeometryFieldsModuleE, ONLY: &
     iGE_Ep2, nGE
@@ -855,16 +850,12 @@ CONTAINS
                 Min_K = MIN( Min_K, U_P_N(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
                 Max_K = MAX( Max_K, U_P_N(iP_Z,iZ1,iZ2,iZ3,iZ4,iS) )
               END DO
-              !Min_K = MINVAL( U_P_N(:,iZ1,iZ2,iZ3,iZ4,iS) )
-              !Max_K = MAXVAL( U_P_N(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
               IF ( Min_K < Min_1 .OR. Max_K > Max_1 ) THEN
 
                 NegativeStates(1,iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
                 ! --- Limit Density Towards Cell Average ---
-
-                !U_K_N(iZ1,iZ2,iZ3,iZ4,iS) = DOT_PRODUCT( Weights_q, U_Q_N(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
                 Theta_1 &
                   = Theta_Eps * MIN( One, &
@@ -1027,16 +1018,9 @@ CONTAINS
 
               END DO
 
-              !Min_Gam = MINVAL( Gam(:) )
-
               IF ( Min_Gam < Min_2 ) THEN
 
                 NegativeStates(2,iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
-
-                !U_K_N (iZ1,iZ2,iZ3,iZ4,iS) = DOT_PRODUCT( Weights_q, U_Q_N (:,iZ1,iZ2,iZ3,iZ4,iS) )
-                !U_K_G1(iZ1,iZ2,iZ3,iZ4,iS) = DOT_PRODUCT( Weights_q, U_Q_G1(:,iZ1,iZ2,iZ3,iZ4,iS) )
-                !U_K_G2(iZ1,iZ2,iZ3,iZ4,iS) = DOT_PRODUCT( Weights_q, U_Q_G2(:,iZ1,iZ2,iZ3,iZ4,iS) )
-                !U_K_G3(iZ1,iZ2,iZ3,iZ4,iS) = DOT_PRODUCT( Weights_q, U_Q_G3(:,iZ1,iZ2,iZ3,iZ4,iS) )
 
                 ! --- Limit Towards Cell Average ---
 
