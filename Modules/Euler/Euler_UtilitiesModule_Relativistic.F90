@@ -295,26 +295,26 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iX_B0, iX_E0, G, U ) &
-    !$OMP MAP( alloc: P, iErr, A )
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
+    !$OMP MAP( alloc: P, A, iErr )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(  iX_B0, iX_E0, G, U ) &
-    !$ACC CREATE(  P, iErr, A )
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
+    !$ACC CREATE(     P, A, iErr )
 #endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B0, iX_E0, A )
+    !$ACC PRESENT( iX_B1, iX_E1, A )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
     DO iAF = 1, nAF
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
     DO iNX = 1, nDOFX
 
       A(iNX,iX1,iX2,iX3,iAF) = Zero
@@ -385,12 +385,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    U, iErr ) &
-    !$OMP MAP( release: iX_B0, iX_E0, G, P, A )
+    !$OMP MAP( from:    P, A, iErr ) &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      U, iErr ) &
-    !$ACC DELETE(       iX_B0, iX_E0, G, P, A )
+    !$ACC COPYOUT(      P, A, iErr ) &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CFC_CopyOut )
