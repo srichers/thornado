@@ -88,6 +88,7 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_PL_CopyOut
   REAL(DP), PUBLIC :: Timer_Euler_PL_Permute
   REAL(DP), PUBLIC :: Timer_Euler_PL_Integrate
+  REAL(DP), PUBLIC :: Timer_Euler_PL_ErrorCheck
 
   ! --- Miscellaneous ---
 
@@ -177,6 +178,7 @@ CONTAINS
     Timer_Euler_PL_CopyOut        = SqrtTiny
     Timer_Euler_PL_Permute        = SqrtTiny
     Timer_Euler_PL_Integrate      = SqrtTiny
+    Timer_Euler_PL_ErrorCheck     = SqrtTiny
 
     Timer_GravitySolver            = SqrtTiny
     Timer_Euler_BoundaryConditions = SqrtTiny
@@ -627,7 +629,8 @@ CONTAINS
                     + Timer_Euler_PL_CopyIn &
                     + Timer_Euler_PL_CopyOut &
                     + Timer_Euler_PL_Permute &
-                    + Timer_Euler_PL_Integrate
+                    + Timer_Euler_PL_Integrate &
+                    + Timer_Euler_PL_ErrorCheck
 
       WRITE(*,TRIM(TimeL3)) &
         'Positivity-Limiter: ', &
@@ -666,6 +669,12 @@ CONTAINS
         Timer_Euler_PL_Integrate, ' s = ', &
         Timer_Euler_PL_Integrate / Timer_Euler_Program, ' = ', &
         Timer_Euler_PL_Integrate / Timer_Euler_PositivityLimiter
+
+      WRITE(*,TRIM(TimeL3)) &
+        '  Error Check: ', &
+        Timer_Euler_PL_ErrorCheck, ' s = ', &
+        Timer_Euler_PL_ErrorCheck / Timer_Euler_Program, ' = ', &
+        Timer_Euler_PL_ErrorCheck / Timer_Euler_PositivityLimiter
 
       WRITE(*,*)
       WRITE(*,TRIM(Label_Level1)) 'ComputeFromConserved'
