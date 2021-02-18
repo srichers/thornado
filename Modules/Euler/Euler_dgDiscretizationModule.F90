@@ -315,7 +315,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
-    INTEGER  :: nK(3), nF_X1(3), nCF_K, nCF_F, nGF_F, nDF_F
+    INTEGER  :: nK(3), nF_X1(3), nCF_K, nCF_F, nGF_F
     INTEGER  :: iNX, iNX_X1, iX1, iX2, iX3, iCF, iGF
     REAL(DP) :: AlphaMns, AlphaPls, AlphaMdl
     REAL(DP) :: uCF_F_L(nCF), uCF_F_R(nCF)
@@ -391,7 +391,6 @@ CONTAINS
     nCF_K = nCF * PRODUCT( nK )    ! Number of Fluid Fields in Domain
     nCF_F = nCF * PRODUCT( nF_X1 ) ! Number of Fluid Fields on Interfaces
     nGF_F = nGF * PRODUCT( nF_X1 ) ! Number of Geometry Fields on Interfaces
-    nDF_F = 2   * PRODUCT( nF_X1 ) ! Number of Diagnostic Fields on Interfaces
 
     ASSOCIATE( dX2 => MeshX(2) % Width, dX3 => MeshX(3) % Width )
 
@@ -1114,7 +1113,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
-    INTEGER  :: nK(3), nF_X2(3), nCF_K, nCF_F, nGF_F, nDF_F
+    INTEGER  :: nK(3), nF_X2(3), nCF_K, nCF_F, nGF_F
     INTEGER  :: iNX, iNX_X2, iX1, iX2, iX3, iCF, iGF
     REAL(DP) :: AlphaMns, AlphaPls, AlphaMdl
     REAL(DP) :: uCF_F_L(nCF), uCF_F_R(nCF)
@@ -1190,7 +1189,6 @@ CONTAINS
     nCF_K = nCF * PRODUCT( nK )    ! Number of Fluid Fields in Domain
     nCF_F = nCF * PRODUCT( nF_X2 ) ! Number of Fluid Fields on Interfaces
     nGF_F = nGF * PRODUCT( nF_X2 ) ! Number of Geometry Fields on Interfaces
-    nDF_F = 2   * PRODUCT( nF_X2 ) ! Number of Diagnostic Fields on Interfaces
 
     ASSOCIATE( dX1 => MeshX(1) % Width, dX3 => MeshX(3) % Width )
 
@@ -1913,7 +1911,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
-    INTEGER  :: nK(3), nF_X3(3), nCF_K, nCF_F, nGF_F, nDF_F
+    INTEGER  :: nK(3), nF_X3(3), nCF_K, nCF_F, nGF_F
     INTEGER  :: iNX, iNX_X3, iX1, iX2, iX3, iCF, iGF
     REAL(DP) :: AlphaMns, AlphaPls, AlphaMdl
     REAL(DP) :: uCF_F_L(nCF), uCF_F_R(nCF)
@@ -1989,7 +1987,6 @@ CONTAINS
     nCF_K = nCF * PRODUCT( nK )    ! Number of Fluid Fields in Domain
     nCF_F = nCF * PRODUCT( nF_X3 ) ! Number of Fluid Fields on Interfaces
     nGF_F = nGF * PRODUCT( nF_X3 ) ! Number of Geometry Fields on Interfaces
-    nDF_F = 2   * PRODUCT( nF_X3 ) ! Number of Diagnostic Fields on Interfaces
 
     ASSOCIATE( dX1 => MeshX(1) % Width, dX2 => MeshX(2) % Width )
 
