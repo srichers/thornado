@@ -1670,10 +1670,10 @@ CONTAINS
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
 
+      iErr(iX1,iX2,iX3) = 0
+
       IF( IsCornerCell &
             ( iX_B1, iX_E1, iX1arr(iX1), iX2arr(iX2), iX3arr(iX3) ) ) CYCLE
-
-      iErr(iX1,iX2,iX3) = 0
 
       GK(1,iX1,iX2,iX3) = GK(1,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
       GK(2,iX1,iX2,iX3) = GK(2,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
