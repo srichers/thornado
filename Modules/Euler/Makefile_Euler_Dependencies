@@ -106,7 +106,6 @@ Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
   GeometryFieldsModule.o \
-  GeometryComputationModule.o \
   FluidFieldsModule.o \
   TimersModule_Euler.o \
   Euler_ErrorModule.o \
