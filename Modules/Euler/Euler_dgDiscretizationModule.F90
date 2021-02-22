@@ -137,13 +137,13 @@ CONTAINS
     INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)            :: &
-      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
     REAL(DP), INTENT(inout)         :: &
-      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(inout)         :: &
-      D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      D (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDF)
     REAL(DP), INTENT(out)           :: &
-      dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     LOGICAL,  INTENT(in),  OPTIONAL :: &
       SuppressBC_Option
 
@@ -160,11 +160,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3, G, U, D ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
     !$OMP MAP( alloc: dU )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3, G, U, D ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
     !$ACC CREATE(     dU )
 #endif
 
@@ -276,7 +276,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( dU )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( dU )
+    !$ACC UPDATE HOST       ( dU )
 #endif
     WRITE(*,'(A20,7I4)')     'MAXLOC(dU)', MAXLOC(dU)
     WRITE(*,'(A20,ES23.15)') 'MAXVAL(dU)', MAXVAL(dU)
@@ -318,7 +318,7 @@ CONTAINS
     INTEGER  :: nK(3), nF_X1(3), nCF_K, nCF_F, nGF_F
     INTEGER  :: iNX, iNX_X1, iX1, iX2, iX3, iCF, iGF
     REAL(DP) :: AlphaMns, AlphaPls, AlphaMdl
-    REAL(DP) :: uCF_F_L(nCF), uCF_F_R(nCF)
+    REAL(DP) :: uCF_F_L  (nCF), uCF_F_R  (nCF)
     REAL(DP) :: Flux_X1_L(nCF), Flux_X1_R(nCF)
     REAL(DP) :: Flux_X1_F(nCF), Flux_X1_K(nCF)
     REAL(DP) :: EigVals_L(nCF), EigVals_R(nCF)
@@ -498,10 +498,10 @@ CONTAINS
       G_F         (iNX_X1,iGF_Gm_dd_33,iX2,iX3,iX1) &
         = MAX( G_F(iNX_X1,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
 
-      G_F        (iNX_X1,iGF_SqrtGm,iX2,iX3,iX1) &
-        = G_F    (iNX_X1,iGF_h_1   ,iX2,iX3,iX1) &
-            * G_F(iNX_X1,iGF_h_2   ,iX2,iX3,iX1) &
-            * G_F(iNX_X1,iGF_h_3   ,iX2,iX3,iX1)
+      G_F             (iNX_X1,iGF_SqrtGm,iX2,iX3,iX1) &
+        = MAX( G_F    (iNX_X1,iGF_h_1   ,iX2,iX3,iX1) &
+                 * G_F(iNX_X1,iGF_h_2   ,iX2,iX3,iX1) &
+                 * G_F(iNX_X1,iGF_h_3   ,iX2,iX3,iX1), SqrtTiny )
 
       G_F         (iNX_X1,iGF_Alpha,iX2,iX3,iX1) &
         = MAX( G_F(iNX_X1,iGF_Alpha,iX2,iX3,iX1), SqrtTiny )
@@ -818,14 +818,14 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nCF_K, nDOFX_X1, + One, LX_X1_Dn, nDOFX_X1, &
-             NumericalFlux(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1, Zero, &
+             NumericalFlux(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, Zero, &
              dU_X1, nDOFX )
 
     ! --- Contribution from Right Face ---
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nCF_K, nDOFX_X1, - One, LX_X1_Up, nDOFX_X1, &
-             NumericalFlux(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One, &
+             NumericalFlux(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One , &
              dU_X1, nDOFX )
 
     CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
@@ -901,7 +901,7 @@ CONTAINS
                uPF_K(iNX,iPF_Ne,iX2,iX3,iX1), &
                P_K )
 
-      Flux_X1_K(1:nCF) &
+      Flux_X1_K &
         = Flux_X1_Euler &
           ( uPF_K(iNX,iPF_D       ,iX2,iX3,iX1), &
             uPF_K(iNX,iPF_V1      ,iX2,iX3,iX1), &
@@ -984,7 +984,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    iErr_L, iErr_R, iErr_M, iErr_V ) &
-    !$OMP MAP( release: dX2, dX3, iX_B0, iX_E0, iX_B1, iX_E1, &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, dX2, dX3, &
     !$OMP               uCF_L, uCF_R, uCF_K, &
     !$OMP               uPF_L, uPF_R, uPF_K, &
     !$OMP               uDF_L, uDF_R,        &
@@ -1010,14 +1010,14 @@ CONTAINS
         ANY( iErr_M .NE. 0 ) .OR. &
         ANY( iErr_V .NE. 0 ) )THEN
 
-      WRITE(*,*) 'ERROR: Surface term (X1) (Left)'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1) + 1
       DO iNX_X1 = 1, nDOFX_X1
 
         IF( iErr_L(iNX_X1,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: Surface term (X1) (Left)'
 
           WRITE(*,*) 'iNX_X1, iX1, iX2, iX3 = ', iNX_X1, iX1, iX2, iX3
 
@@ -1030,14 +1030,14 @@ CONTAINS
       END DO
       END DO
 
-      WRITE(*,*) 'ERROR: Surface term (X1) (Right)'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1) + 1
       DO iNX_X1 = 1, nDOFX_X1
 
         IF( iErr_R(iNX_X1,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: Surface term (X1) (Right)'
 
           WRITE(*,*) 'iNX_X1, iX1, iX2, iX3 = ', iNX_X1, iX1, iX2, iX3
 
@@ -1050,14 +1050,14 @@ CONTAINS
       END DO
       END DO
 
-      WRITE(*,*) 'ERROR: AlphaMiddle (X1)'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1) + 1
       DO iNX_X1 = 1, nDOFX_X1
 
         IF( iErr_M(iNX_X1,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: AlphaMiddle (X1)'
 
           WRITE(*,*) 'iNX_X1, iX1, iX2, iX3 = ', iNX_X1, iX1, iX2, iX3
 
@@ -1070,14 +1070,14 @@ CONTAINS
       END DO
       END DO
 
-      WRITE(*,*) 'ERROR: Volume term (X1)'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1, nDOFX
 
         IF( iErr_V(iNX,iX2,iX3,iX1) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: Volume term (X1)'
 
           WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
 
@@ -1116,7 +1116,7 @@ CONTAINS
     INTEGER  :: nK(3), nF_X2(3), nCF_K, nCF_F, nGF_F
     INTEGER  :: iNX, iNX_X2, iX1, iX2, iX3, iCF, iGF
     REAL(DP) :: AlphaMns, AlphaPls, AlphaMdl
-    REAL(DP) :: uCF_F_L(nCF), uCF_F_R(nCF)
+    REAL(DP) :: uCF_F_L  (nCF), uCF_F_R  (nCF)
     REAL(DP) :: Flux_X2_L(nCF), Flux_X2_R(nCF)
     REAL(DP) :: Flux_X2_F(nCF), Flux_X2_K(nCF)
     REAL(DP) :: EigVals_L(nCF), EigVals_R(nCF)
@@ -1249,7 +1249,7 @@ CONTAINS
     ! --- Face States (Average of Left and Right States) ---
 
     CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X2, nGF_F, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+           ( 'N', 'N', nDOFX_X2, nGF_F, nDOFX, One , LX_X2_Up, nDOFX_X2, &
              G_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
              G_F(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
     CALL MatrixMatrixMultiply &
@@ -1296,10 +1296,10 @@ CONTAINS
       G_F         (iNX_X2,iGF_Gm_dd_33,iX1,iX3,iX2) &
         = MAX( G_F(iNX_X2,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
 
-      G_F        (iNX_X2,iGF_SqrtGm,iX1,iX3,iX2) &
-        = G_F    (iNX_X2,iGF_h_1   ,iX1,iX3,iX2) &
-            * G_F(iNX_X2,iGF_h_2   ,iX1,iX3,iX2) &
-            * G_F(iNX_X2,iGF_h_3   ,iX1,iX3,iX2)
+      G_F             (iNX_X2,iGF_SqrtGm,iX1,iX3,iX2) &
+        = MAX( G_F    (iNX_X2,iGF_h_1   ,iX1,iX3,iX2) &
+                 * G_F(iNX_X2,iGF_h_2   ,iX1,iX3,iX2) &
+                 * G_F(iNX_X2,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
 
       G_F         (iNX_X2,iGF_Alpha,iX1,iX3,iX2) &
         = MAX( G_F(iNX_X2,iGF_Alpha,iX1,iX3,iX2), SqrtTiny )
@@ -1313,7 +1313,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( uCF_K, U, iX_B0, iX_E0 )
+    !$ACC PRESENT( iX_B0, iX_E0, uCF_K, U )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
@@ -1616,14 +1616,14 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nCF_K, nDOFX_X2, + One, LX_X2_Dn, nDOFX_X2, &
-             NumericalFlux(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2, Zero, &
+             NumericalFlux(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2, Zero, &
              dU_X2, nDOFX )
 
     ! --- Contribution from Right Face ---
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nCF_K, nDOFX_X2, - One, LX_X2_Up, nDOFX_X2, &
-             NumericalFlux(1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, One, &
+             NumericalFlux(1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, One , &
              dU_X2, nDOFX )
 
     CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
@@ -1747,7 +1747,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B0, iX_E0, dU_X2, dU )
+    !$ACC PRESENT( iX_B0, iX_E0, dU, dU_X2 )
 #elif defined(THORNADO_OMP)
     !$ACC PARALLEL DO SIMD COLLAPSE(5)
 #endif
@@ -1771,7 +1771,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( dU_X2 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( dU_X2 )
+    !$ACC UPDATE HOST       ( dU_X2 )
 #endif
     WRITE(*,'(A20,7I4)')     'MAXLOC(dU_X2)', MAXLOC(dU_X2)
     WRITE(*,'(A20,ES23.15)') 'MAXVAL(dU_X2)', MAXVAL(dU_X2)
@@ -1808,14 +1808,14 @@ CONTAINS
         ANY( iErr_M .NE. 0 ) .OR. &
         ANY( iErr_V .NE. 0 ) )THEN
 
-      WRITE(*,*) 'ERROR: Surface term (X2) (Left)'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2) + 1
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX_X2 = 1, nDOFX_X2
 
         IF( iErr_L(iNX_X2,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: Surface term (X2) (Left)'
 
           WRITE(*,*) 'iNX_X2, iX1, iX2, iX3 = ', iNX_X2, iX1, iX2, iX3
 
@@ -1828,14 +1828,14 @@ CONTAINS
       END DO
       END DO
 
-      WRITE(*,*) 'ERROR: Surface term (X2) (Right)'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2) + 1
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX_X2 = 1, nDOFX_X2
 
         IF( iErr_R(iNX_X2,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: Surface term (X2) (Right)'
 
           WRITE(*,*) 'iNX_X2, iX1, iX2, iX3 = ', iNX_X2, iX1, iX2, iX3
 
@@ -1848,14 +1848,14 @@ CONTAINS
       END DO
       END DO
 
-      WRITE(*,*) 'ERROR: AlphaMiddle (X2)'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2) + 1
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX_X2 = 1, nDOFX_X2
 
         IF( iErr_M(iNX_X2,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: AlphaMiddle (X2)'
 
           WRITE(*,*) 'iNX_X2, iX1, iX2, iX3 = ', iNX_X2, iX1, iX2, iX3
 
@@ -1868,14 +1868,14 @@ CONTAINS
       END DO
       END DO
 
-      WRITE(*,*) 'ERROR: Volume term (X2)'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1, nDOFX
 
         IF( iErr_V(iNX,iX1,iX3,iX2) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: Volume term (X2)'
 
           WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
 
@@ -1914,7 +1914,7 @@ CONTAINS
     INTEGER  :: nK(3), nF_X3(3), nCF_K, nCF_F, nGF_F
     INTEGER  :: iNX, iNX_X3, iX1, iX2, iX3, iCF, iGF
     REAL(DP) :: AlphaMns, AlphaPls, AlphaMdl
-    REAL(DP) :: uCF_F_L(nCF), uCF_F_R(nCF)
+    REAL(DP) :: uCF_F_L  (nCF), uCF_F_R  (nCF)
     REAL(DP) :: Flux_X3_L(nCF), Flux_X3_R(nCF)
     REAL(DP) :: Flux_X3_F(nCF), Flux_X3_K(nCF)
     REAL(DP) :: EigVals_L(nCF), EigVals_R(nCF)
@@ -2094,10 +2094,10 @@ CONTAINS
       G_F         (iNX_X3,iGF_Gm_dd_33,iX1,iX2,iX3) &
         = MAX( G_F(iNX_X3,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
 
-      G_F        (iNX_X3,iGF_SqrtGm,iX1,iX2,iX3) &
-        = G_F    (iNX_X3,iGF_h_1   ,iX1,iX2,iX3) &
-            * G_F(iNX_X3,iGF_h_2   ,iX1,iX2,iX3) &
-            * G_F(iNX_X3,iGF_h_3   ,iX1,iX2,iX3)
+      G_F             (iNX_X3,iGF_SqrtGm,iX1,iX2,iX3) &
+        = MAX( G_F    (iNX_X3,iGF_h_1   ,iX1,iX2,iX3) &
+                 * G_F(iNX_X3,iGF_h_2   ,iX1,iX2,iX3) &
+                 * G_F(iNX_X3,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
 
       G_F         (iNX_X3,iGF_Alpha,iX1,iX2,iX3) &
         = MAX( G_F(iNX_X3,iGF_Alpha,iX1,iX2,iX3), SqrtTiny )
@@ -2414,14 +2414,14 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nCF_K, nDOFX_X3, + One, LX_X3_Dn, nDOFX_X3, &
-             NumericalFlux(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3, Zero, &
+             NumericalFlux(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3, Zero, &
              dU_X3, nDOFX )
 
     ! --- Contribution from Right Face ---
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nCF_K, nDOFX_X3, - One, LX_X3_Up, nDOFX_X3, &
-             NumericalFlux(1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX_X3, One, &
+             NumericalFlux(1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX_X3, One , &
              dU_X3, nDOFX )
 
     CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
@@ -2569,7 +2569,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( dU_X3 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( dU_X3 )
+    !$ACC UPDATE HOST       ( dU_X3 )
 #endif
     WRITE(*,'(A20,7I4)')     'MAXLOC(dU_X3)', MAXLOC(dU_X3)
     WRITE(*,'(A20,ES23.15)') 'MAXVAL(dU_X3)', MAXVAL(dU_X3)
@@ -2606,14 +2606,14 @@ CONTAINS
         ANY( iErr_M .NE. 0 ) .OR. &
         ANY( iErr_V .NE. 0 ) )THEN
 
-      WRITE(*,*) 'ERROR: Surface term (X3) (Left)'
-
       DO iX3 = iX_B0(3), iX_E0(3) + 1
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX_X3 = 1, nDOFX_X3
 
         IF( iErr_L(iNX_X3,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: Surface term (X3) (Left)'
 
           WRITE(*,*) 'iNX_X3, iX1, iX2, iX3 = ', iNX_X3, iX1, iX2, iX3
 
@@ -2626,14 +2626,14 @@ CONTAINS
       END DO
       END DO
 
-      WRITE(*,*) 'ERROR: Surface term (X3) (Right)'
-
       DO iX3 = iX_B0(3), iX_E0(3) + 1
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX_X3 = 1, nDOFX_X3
 
         IF( iErr_R(iNX_X3,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: Surface term (X3) (Right)'
 
           WRITE(*,*) 'iNX_X3, iX1, iX2, iX3 = ', iNX_X3, iX1, iX2, iX3
 
@@ -2646,14 +2646,14 @@ CONTAINS
       END DO
       END DO
 
-      WRITE(*,*) 'ERROR: AlphaMiddle (X3)'
-
       DO iX3 = iX_B0(3), iX_E0(3) + 1
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX_X3 = 1, nDOFX_X3
 
         IF( iErr_M(iNX_X3,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: AlphaMiddle (X3)'
 
           WRITE(*,*) 'iNX_X3, iX1, iX2, iX3 = ', iNX_X3, iX1, iX2, iX3
 
@@ -2666,14 +2666,14 @@ CONTAINS
       END DO
       END DO
 
-      WRITE(*,*) 'ERROR: Volume term (X3)'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1, nDOFX
 
         IF( iErr_V(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: Volume term (X3)'
 
           WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
 
@@ -5148,14 +5148,14 @@ CONTAINS
 
     IF( ANY( iErr .NE. 0 ) )THEN
 
-      WRITE(*,*) 'ERROR: ComputeIncrement_Geometry_Relativistic'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1, nDOFX
 
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: ComputeIncrement_Geometry_Relativistic'
 
           WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
 

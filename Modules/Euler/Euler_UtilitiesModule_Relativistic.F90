@@ -345,17 +345,17 @@ CONTAINS
       iErr(iNX,iX1,iX2,iX3) = 0
 
       CALL ComputePrimitive_Euler_Relativistic &
-             ( U   (iNX,iX1,iX2,iX3,iCF_D),         &
+             ( U   (iNX,iX1,iX2,iX3,iCF_D ),        &
                U   (iNX,iX1,iX2,iX3,iCF_S1),        &
                U   (iNX,iX1,iX2,iX3,iCF_S2),        &
                U   (iNX,iX1,iX2,iX3,iCF_S3),        &
-               U   (iNX,iX1,iX2,iX3,iCF_E),         &
+               U   (iNX,iX1,iX2,iX3,iCF_E ),        &
                U   (iNX,iX1,iX2,iX3,iCF_Ne),        &
-               P   (iNX,iX1,iX2,iX3,iPF_D),         &
+               P   (iNX,iX1,iX2,iX3,iPF_D ),        &
                P   (iNX,iX1,iX2,iX3,iPF_V1),        &
                P   (iNX,iX1,iX2,iX3,iPF_V2),        &
                P   (iNX,iX1,iX2,iX3,iPF_V3),        &
-               P   (iNX,iX1,iX2,iX3,iPF_E),         &
+               P   (iNX,iX1,iX2,iX3,iPF_E ),        &
                P   (iNX,iX1,iX2,iX3,iPF_Ne),        &
                G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
                G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
@@ -399,14 +399,14 @@ CONTAINS
 
     IF( ANY( iErr .NE. 0 ) )THEN
 
-      WRITE(*,*) 'ERROR: ComputeFromConserved_Euler_Relativistic'
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1, nDOFX
 
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
+
+          WRITE(*,*) 'ERROR: ComputeFromConserved_Euler_Relativistic'
 
           WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
 

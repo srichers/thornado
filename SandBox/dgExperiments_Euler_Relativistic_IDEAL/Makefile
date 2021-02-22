@@ -81,11 +81,12 @@ InitializationModule_Relativistic.o: \
   UnitsModule.o \
   QuadratureModule.o \
   PolynomialBasisModule_Lagrange.o \
-  InitializationModule_Relativistic.f90
+  InitializationModule_Relativistic.F90
 
 TimeSteppingModule_SSPRK.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \

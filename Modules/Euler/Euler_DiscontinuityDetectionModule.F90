@@ -24,6 +24,7 @@ MODULE Euler_DiscontinuityDetectionModule
     L_X2, &
     L_X3
   USE GeometryFieldsModule, ONLY: &
+    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
@@ -47,6 +48,7 @@ MODULE Euler_DiscontinuityDetectionModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
+    nDF, &
     iDF_TCI, &
     iDF_Sh_X1, &
     iDF_Sh_X2, &
@@ -1457,10 +1459,10 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
+      U(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      D(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDF)
 
     INTEGER  :: iNX, iX1, iX2, iX3
     REAL(DP) :: GradP, DivV
