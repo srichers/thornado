@@ -137,12 +137,12 @@ PROGRAM ApplicationDriver
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
-      bcX = [ 1, 0, 0 ]
+      bcX = [ 1, 1, 1 ]
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 64, 1, 1 ]
-      swX = [ 1, 0, 0 ]
+      nX  = [ 64, 64, 64 ]
+      swX = [ 1, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -426,12 +426,6 @@ PROGRAM ApplicationDriver
            nDetCells_Option = nDetCells, &
            Eblast_Option    = Eblast )
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE TO( uCF, uGF )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE DEVICE   ( uCF, uGF )
-#endif
-
   IF( RestartFileNumber .LT. 0 )THEN
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
@@ -460,7 +454,7 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  iCycleD = 10
+  iCycleD = 1
 !!$  iCycleW = 1; dt_wrt = -1.0_DP
   dt_wrt = 1.0e-2_DP * ( t_end - t ); iCycleW = -1
 
@@ -559,6 +553,8 @@ PROGRAM ApplicationDriver
 
     END IF
 
+exit
+
   END DO
 
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
@@ -604,21 +600,21 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeTimers_Euler
 
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git info'
-  WRITE(*,'(2x,A)') '--------'
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git branch:'
-  CALL EXECUTE_COMMAND_LINE( 'git branch' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git describe --tags:'
-  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
-  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
-  WRITE(*,*)
-  WRITE(*,'(2x,A)') 'date:'
-  CALL EXECUTE_COMMAND_LINE( 'date' )
-  WRITE(*,*)
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git info'
+!!$  WRITE(*,'(2x,A)') '--------'
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git branch:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git describe --tags:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+!!$  WRITE(*,*)
+!!$  WRITE(*,'(2x,A)') 'date:'
+!!$  CALL EXECUTE_COMMAND_LINE( 'date' )
+!!$  WRITE(*,*)
 
 END PROGRAM ApplicationDriver

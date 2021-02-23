@@ -181,8 +181,10 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-      CALL DetectShocks_Euler &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+!      CALL DetectShocks_Euler &
+!             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+D = 0.0_DP
+!$ACC UPDATE DEVICE( D )
 
     END IF
 
@@ -219,11 +221,11 @@ CONTAINS
     CALL ComputeIncrement_Euler_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
-    CALL ComputeIncrement_Euler_Divergence_X2 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
-
-    CALL ComputeIncrement_Euler_Divergence_X3 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+!    CALL ComputeIncrement_Euler_Divergence_X2 &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+!
+!    CALL ComputeIncrement_Euler_Divergence_X3 &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
     CALL TimersStop_Euler( Timer_Euler_Divergence )
 
@@ -573,6 +575,17 @@ CONTAINS
            ( 'N', 'N', nDOFX_X1, nCF_F, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
              uCF_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
              uCF_R(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+! !$ACC UPDATE HOST( uCF_L )
+! print*,'uCF_L'
+! print*,minval(ucf_l(:,1,:,:,:))
+! print*,maxval(ucf_l(:,1,:,:,:))
+
+!$ACC UPDATE HOST( uCF_R )
+print*,'uCF_R'
+print*,minval(ucf_r(:,1,:,:,:))
+print*,maxval(ucf_r(:,1,:,:,:))
+print*
 
     CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
@@ -2545,7 +2558,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( iX_B0, iX_E0, dU_X3, dU )
+    !$ACC PRESENT( iX_B0, iX_E0, dU, dU_X3 )
 #elif defined(THORNADO_OMP)
     !$ACC PARALLEL DO SIMD COLLAPSE(5)
 #endif
