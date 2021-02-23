@@ -1527,13 +1527,13 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D ) &
-    !$OMP MAP( alloc: SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
-    !$OMP             iX1arr, iX2arr, iX3arr, iErr )
+    !$OMP MAP( alloc: SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, iErr, &
+    !$OMP             iX1arr, iX2arr, iX3arr )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D ) &
-    !$ACC CREATE(     SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
-    !$ACC             iX1arr, iX2arr, iX3arr, iErr )
+    !$ACC CREATE(     SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, iErr, &
+    !$ACC             iX1arr, iX2arr, iX3arr )
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -1663,8 +1663,8 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( iX_B1, iX_E1, GK, UK, Vol, PK, PrK, VK, &
-    !$ACC          iX1arr, iX2arr, iX3arr, iErr )
+    !$ACC PRESENT( iX_B1, iX_E1, iErr, Vol, GK, UK, PK, PrK, VK, &
+    !$ACC          iX1arr, iX2arr, iX3arr )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
@@ -1837,18 +1837,20 @@ CONTAINS
 
     IF( ANY( iErr .NE. 0 ) )THEN
 
-      PRINT*, 'Shock Detector'
+      WRITE(*,*) 'Module: Euler_DiscontinuityDetectionModule'
+      WRITE(*,*) 'Subroutine: DetectShocks_Euler'
 
       DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
       DO iX1 = iX_B1(1), iX_E1(1)
 
-        IF( IsCornerCell &
-              ( iX_B1, iX_E1, iX1arr(iX1), iX2arr(iX2), iX3arr(iX3) ) ) CYCLE
+        IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
         IF( iErr(iX1,iX2,iX3) .NE. 0 )THEN
 
-          PRINT*, 'iX1, iX2, iX3, iErr = ', iX1, iX2, iX3, iErr
+          WRITE(*,'(A,I4.4,1x,I4.4,1x,I4.4,1x,I2.2)') &
+            'iX1, iX2, iX3, iErr = ', iX1, iX2, iX3, iErr(iX1,iX2,iX3)
+
           CALL DescribeError_Euler( iErr(iX1,iX2,iX3) )
 
         END IF
