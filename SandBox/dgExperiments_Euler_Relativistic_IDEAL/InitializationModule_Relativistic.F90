@@ -85,7 +85,7 @@ CONTAINS
 
     ! --- Sedov-Taylor Blast Wave (Defaults) ---
     INTEGER  :: nDetCells = 1
-    REAL(DP) :: Eblast    = 1.0d-3
+    REAL(DP) :: Eblast    = 1.0e-3_DP
 
     uPF(:,:,:,:,iPF_Ne) = Zero
 

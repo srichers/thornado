@@ -1757,7 +1757,7 @@ CONTAINS
       GradP = ABS( PrK(iX1+1,iX2,iX3) - PrK(iX1-1,iX2,iX3) ) &
                 / MIN( PrK(iX1+1,iX2,iX3), PrK(iX1-1,iX2,iX3) )
 
-      DivV  = VK(1,iX1+1,iX2,iX3) - VK(1,iX1-1,iX2,iX3)
+      DivV = VK(1,iX1+1,iX2,iX3) - VK(1,iX1-1,iX2,iX3)
 
       IF( GradP .GT. Third .AND. DivV .LT. Zero )THEN
 
@@ -1776,7 +1776,7 @@ CONTAINS
         GradP = ABS( PrK(iX1,iX2+1,iX3) - PrK(iX1,iX2-1,iX3) ) &
                   / MIN( PrK(iX1,iX2+1,iX3), PrK(iX1,iX2-1,iX3) )
 
-        DivV  = VK(2,iX1,iX2+1,iX3) - VK(2,iX1,iX2-1,iX3)
+        DivV = VK(2,iX1,iX2+1,iX3) - VK(2,iX1,iX2-1,iX3)
 
         IF( GradP .GT. Third .AND. DivV .LT. Zero )THEN
 
@@ -1797,7 +1797,7 @@ CONTAINS
         GradP = ABS( PrK(iX1,iX2,iX3+1) - PrK(iX1,iX2,iX3-1) ) &
                   / MIN( PrK(iX1,iX2,iX3+1), PrK(iX1,iX2,iX3-1) )
 
-        DivV  = VK(3,iX1,iX2,iX3+1) - VK(3,iX1,iX2,iX3-1)
+        DivV = VK(3,iX1,iX2,iX3+1) - VK(3,iX1,iX2,iX3-1)
 
         IF( GradP .GT. Third .AND. DivV .LT. Zero )THEN
 

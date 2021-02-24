@@ -104,9 +104,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    a_SSPRK, c_SSPRK, w_SSPRK ) &
     !$OMP MAP( alloc: U_SSPRK, D_SSPRK )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
+    !$ACC COPYIN(     a_SSPRK, c_SSPRK, w_SSPRK ) &
     !$ACC CREATE(     U_SSPRK, D_SSPRK )
 #endif
 
@@ -117,10 +119,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: U_SSPRK, D_SSPRK )
+    !$OMP MAP( release: U_SSPRK, D_SSPRK, a_SSPRK, c_SSPRK, w_SSPRK )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE(       U_SSPRK, D_SSPRK )
+    !$ACC DELETE(       U_SSPRK, D_SSPRK, a_SSPRK, c_SSPRK, w_SSPRK )
 #endif
 
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
@@ -204,10 +206,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iX_B1, iX_E1, G, U, D )
+    !$OMP MAP( to: iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(  iX_B1, iX_E1, G, U, D )
+    !$ACC COPYIN(  iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 #endif
 
     DO iS = 1, nStages_SSPRK
@@ -291,11 +293,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    U, D ) &
-    !$OMP MAP( release: iX_B1, iX_E1, G )
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      U, D ) &
-    !$ACC DELETE(       iX_B1, iX_E1, G )
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
@@ -313,6 +315,14 @@ CONTAINS
       D(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
     INTEGER :: iNX, iX1, iX2, iX3, iCF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iX_B1, iX_E1, U, D )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  iX_B1, iX_E1, U, D )
+#endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -337,6 +347,16 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    U ) &
+    !$OMP MAP( release: iX_B1, iX_E1, D )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(      U ) &
+    !$ACC DELETE(       iX_B1, iX_E1, D )
+#endif
 
   END SUBROUTINE AddIncrement_Fluid
 
