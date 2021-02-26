@@ -980,7 +980,7 @@ CONTAINS
     !$ACC             U_K0_X1, U_K0_X2, U_K0_X3 )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_DD_TCI_Permute )
+    CALL TimersStop_Euler( Timer_Euler_DD_TCI_CopyIn )
 
     CALL TimersStart_Euler( Timer_Euler_DD_TCI_Permute )
 
