@@ -980,6 +980,8 @@ CONTAINS
     !$ACC             U_K0_X1, U_K0_X2, U_K0_X3 )
 #endif
 
+    CALL TimersStop_Euler( Timer_Euler_DD_TCI_Permute )
+
     CALL TimersStart_Euler( Timer_Euler_DD_TCI_Permute )
 
 #if defined(THORNADO_OMP_OL)
