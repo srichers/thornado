@@ -56,8 +56,9 @@ MODULE Euler_UtilitiesModule_Relativistic
     TimersStart_Euler, &
     TimersStop_Euler, &
     Timer_Euler_ComputeTimeStep, &
-    Timer_Euler_CopyIn, &
-    Timer_Euler_CopyOut, &
+    Timer_Euler_CTS_ComputeTimeStep, &
+    Timer_Euler_CTS_CopyIn, &
+    Timer_Euler_CTS_CopyOut, &
     Timer_Euler_ComputeFromConserved, &
     Timer_Euler_CFC_CopyIn, &
     Timer_Euler_CFC_CopyOut, &
@@ -303,6 +304,10 @@ CONTAINS
     !$ACC CREATE(     P, A, iErr )
 #endif
 
+    CALL TimersStop_Euler( Timer_Euler_CFC_CopyIn )
+
+    CALL TimersStart_Euler( Timer_Euler_CFC_ComputePrimitive )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
@@ -324,10 +329,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop_Euler( Timer_Euler_CFC_CopyIn )
-
-    CALL TimersStart_Euler( Timer_Euler_CFC_ComputePrimitive )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -457,7 +458,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
 
-    CALL TimersStart_Euler( Timer_Euler_CopyIn )
+    CALL TimersStart_Euler( Timer_Euler_CTS_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -469,7 +470,9 @@ CONTAINS
     !$ACC CREATE(     iErr )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+    CALL TimersStop_Euler( Timer_Euler_CTS_CopyIn )
+
+    CALL TimersStart_Euler( Timer_Euler_CTS_ComputeTimeStep )
 
     TimeStep = HUGE( One )
 
@@ -541,7 +544,9 @@ CONTAINS
 
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
 
-    CALL TimersStart_Euler( Timer_Euler_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_CTS_ComputeTimeStep )
+
+    CALL TimersStart_Euler( Timer_Euler_CTS_CopyOut )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -553,7 +558,7 @@ CONTAINS
     !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_CopyOut )
+    CALL TimersStop_Euler( Timer_Euler_CTS_CopyOut )
 
     END ASSOCIATE ! dX1, etc.
 
