@@ -47,13 +47,13 @@ MODULE TimeSteppingModule_SSPRK
       INTEGER, INTENT(in)     :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
       REAL(DP), INTENT(in)    :: &
-        G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
+        G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(inout) :: &
-        U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
+        U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(inout) :: &
-        D (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDF)
+        D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(out)   :: &
-        dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
+        dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       LOGICAL, INTENT(in), OPTIONAL :: &
         SuppressBC_Option
     END SUBROUTINE FluidIncrement
@@ -241,10 +241,7 @@ CONTAINS
         IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
           CALL AddIncrement_Fluid &
-                 ( One, U_SSPRK, dt * a_SSPRK(iS,jS), &
-                   D_SSPRK(1:nDOFX,iX_B1(1):iX_E1(1), &
-                                   iX_B1(2):iX_E1(2), &
-                                   iX_B1(3):iX_E1(3),1:nCF,jS) )
+                 ( jS, One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK )
 
         END IF
 
@@ -275,10 +272,7 @@ CONTAINS
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
         CALL AddIncrement_Fluid &
-               ( One, U, dt * w_SSPRK(iS), &
-                 D_SSPRK(1:nDOFX,iX_B1(1):iX_E1(1), &
-                                 iX_B1(2):iX_E1(2), &
-                                 iX_B1(3):iX_E1(3),1:nCF,iS) )
+               ( iS, One, U, dt * w_SSPRK(iS), D_SSPRK )
 
       END IF
 
@@ -305,24 +299,18 @@ CONTAINS
   END SUBROUTINE UpdateFluid_SSPRK
 
 
-  SUBROUTINE AddIncrement_Fluid( alpha, U, beta, D )
+  SUBROUTINE AddIncrement_Fluid( iS, alpha, U, beta, D )
 
+    INTEGER,  INTENT(in)    :: &
+      iS
     REAL(DP), INTENT(in)    :: &
       alpha, beta
     REAL(DP), INTENT(inout) :: &
-      U(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      D(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
 
     INTEGER :: iNX, iX1, iX2, iX3, iCF
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iX_B1, iX_E1, U, D )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN(  iX_B1, iX_E1, U, D )
-#endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -340,23 +328,13 @@ CONTAINS
 
       U(iNX,iX1,iX2,iX3,iCF) &
         = alpha * U(iNX,iX1,iX2,iX3,iCF) &
-            + beta * D(iNX,iX1,iX2,iX3,iCF)
+            + beta * D(iNX,iX1,iX2,iX3,iCF,iS)
 
     END DO
     END DO
     END DO
     END DO
     END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    U ) &
-    !$OMP MAP( release: iX_B1, iX_E1, D )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC COPYOUT(      U ) &
-    !$ACC DELETE(       iX_B1, iX_E1, D )
-#endif
 
   END SUBROUTINE AddIncrement_Fluid
 
