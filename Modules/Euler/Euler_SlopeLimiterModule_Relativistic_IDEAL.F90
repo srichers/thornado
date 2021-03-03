@@ -326,10 +326,6 @@ CONTAINS
     INTEGER,  INTENT(in), OPTIONAL :: &
       iApplyBC_Option(3)
 
-    IF( nDOFX .EQ. 1 ) RETURN
-
-    IF( .NOT. UseSlopeLimiter ) RETURN
-
     IF( .NOT. UseCharacteristicLimiting )THEN
 
       CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_Componentwise &
@@ -412,6 +408,10 @@ CONTAINS
     LOGICAL  :: LimitedCell(1:nCF    ,iX_B0(1):iX_E0(1), &
                                       iX_B0(2):iX_E0(2), &
                                       iX_B0(3):iX_E0(3))
+
+    IF( nDOFX .EQ. 1 ) RETURN
+
+    IF( .NOT. UseSlopeLimiter ) RETURN
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
@@ -921,6 +921,10 @@ CONTAINS
 
     REAL(DP) :: R(1:nCF,1:nCF), invR(1:nCF,1:nCF)
     REAL(DP) :: GK(8), UK(nCF)
+
+    IF( nDOFX .EQ. 1 ) RETURN
+
+    IF( .NOT. UseSlopeLimiter ) RETURN
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 

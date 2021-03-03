@@ -10,12 +10,8 @@ MODULE TimeSteppingModule_SSPRK
     iX_E0, &
     iX_E1, &
     nDOFX
-  USE GeometryFieldsModule, ONLY: &
-    nGF
   USE FluidFieldsModule, ONLY: &
-    nCF, &
-    nPF, &
-    nDF
+    nCF
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
@@ -190,11 +186,11 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       t, dt
     REAL(DP), INTENT(in) :: &
-      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
-      U(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
-      D(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDF)
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid
     LOGICAL :: DEBUG = .FALSE.

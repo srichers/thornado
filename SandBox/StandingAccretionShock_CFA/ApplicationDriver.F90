@@ -274,12 +274,6 @@ PROGRAM ApplicationDriver
            rPerturbationInner_Option    = rPerturbationInner, &
            rPerturbationOuter_Option    = rPerturbationOuter )
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE TO( uCF, uGF )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE DEVICE   ( uCF, uGF )
-#endif
-
   IF( RestartFileNumber .LT. 0 )THEN
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &

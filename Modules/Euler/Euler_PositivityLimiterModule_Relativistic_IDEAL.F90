@@ -549,7 +549,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( iX_B0, iX_E0, NegativeStates, U, U_K, U_Q, Theta_q )
+    !$ACC PRESENT( U, U_K, U_Q, Theta_q, NegativeStates )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
@@ -593,13 +593,13 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    U, iErr ) &
-    !$OMP MAP( release: iX_B0, iX_E0, NegativeStates, Theta_q, SqrtGm, &
+    !$OMP MAP( release: NegativeStates, Theta_q, iX_B0, iX_E0, SqrtGm, &
     !$OMP               G, U_Q, U_P, U_K, &
     !$OMP               h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      U, iErr ) &
-    !$ACC DELETE(       iX_B0, iX_E0, NegativeStates, Theta_q, SqrtGm, &
+    !$ACC DELETE(       NegativeStates, Theta_q, iX_B0, iX_E0, SqrtGm, &
     !$ACC               G, U_Q, U_P, U_K, &
     !$ACC               h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
 #endif
@@ -612,13 +612,8 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( iErr(iX1,iX2,iX3) .NE. 0 )THEN
-
-        WRITE(*,'(A,I4.4,1x,I4.4,1x,I4.4,1x,I3.3)') &
-          'iX1, iX2, iX3, iErr = ', iX1, iX2, iX3, iErr(iX1,iX2,iX3)
+      IF( iErr(iX1,iX2,iX3) .NE. 0 ) &
         CALL DescribeError_Euler( iErr(iX1,iX2,iX3) )
-
-      END IF
 
     END DO
     END DO

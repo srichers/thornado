@@ -86,7 +86,6 @@ InitializationModule_Relativistic.o: \
 TimeSteppingModule_SSPRK.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \

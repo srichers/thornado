@@ -137,12 +137,12 @@ PROGRAM ApplicationDriver
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
-      bcX = [ 1, 1, 1 ]
+      bcX = [ 1, 0, 0 ]
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 64, 64, 64 ]
-      swX = [ 1, 1, 1 ]
+      nX  = [ 64, 1, 1 ]
+      swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -415,8 +415,8 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
-  uCF = 0.0_DP ! Without this, crashes when copying data in TimeStepper
-  uDF = 0.0_DP ! Without this, crashes in IO
+  uCF = Zero ! Without this, crashes when copying data in TimeStepper
+  uDF = Zero ! Without this, crashes in IO
 
   CALL InitializeFields_Relativistic &
          ( AdvectionProfile_Option &
@@ -553,8 +553,6 @@ PROGRAM ApplicationDriver
 
     END IF
 
-exit
-
   END DO
 
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
@@ -600,21 +598,21 @@ exit
 
   CALL FinalizeTimers_Euler
 
-!!$  WRITE(*,*)
-!!$  WRITE(*,'(2x,A)') 'git info'
-!!$  WRITE(*,'(2x,A)') '--------'
-!!$  WRITE(*,*)
-!!$  WRITE(*,'(2x,A)') 'git branch:'
-!!$  CALL EXECUTE_COMMAND_LINE( 'git branch' )
-!!$  WRITE(*,*)
-!!$  WRITE(*,'(2x,A)') 'git describe --tags:'
-!!$  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
-!!$  WRITE(*,*)
-!!$  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
-!!$  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
-!!$  WRITE(*,*)
-!!$  WRITE(*,'(2x,A)') 'date:'
-!!$  CALL EXECUTE_COMMAND_LINE( 'date' )
-!!$  WRITE(*,*)
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git info'
+  WRITE(*,'(2x,A)') '--------'
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git branch:'
+  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git describe --tags:'
+  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'date:'
+  CALL EXECUTE_COMMAND_LINE( 'date' )
+  WRITE(*,*)
 
 END PROGRAM ApplicationDriver
