@@ -74,11 +74,13 @@ MODULE RadiationFieldsModule
 
   INTEGER, PUBLIC, PARAMETER :: iAR_F = 1  ! Flux Factor
   INTEGER, PUBLIC, PARAMETER :: iAR_K = 2  ! Eddington Factor
-  INTEGER, PUBLIC, PARAMETER :: nAR   = 2  ! n Auxiliary Radiation Fields
+  INTEGER, PUBLIC, PARAMETER :: iAR_FEM = 3 ! fraction of emissivity given to thornado
+  INTEGER, PUBLIC, PARAMETER :: nAR   = 3  ! n Auxiliary Radiation Fields
 
   CHARACTER(32), DIMENSION(nAR), PUBLIC, PARAMETER :: &
     namesAR = [ 'Lagrangian Flux Factor          ', &
-                'Lagrangian Eddington Factor     ' ]
+    'Lagrangian Eddington Factor     ', &
+    'Fraction of Emissivity for 2-mom']
 
   REAL(DP), DIMENSION(nAR), PUBLIC :: unitsAR
 

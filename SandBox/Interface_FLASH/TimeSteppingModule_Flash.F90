@@ -21,6 +21,9 @@ MODULE TimeSteppingModule_Flash
   USE FluidFieldsModule, ONLY: &
     nCF, uDF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
     iCF_E, iCF_Ne
+  USE FluidFieldsModule, ONLY: &
+    nAF, uAF, iAF_dS1dt, iAF_dS2dt, iAF_dS3dt, &
+    iAF_dEdt, iAF_dNedt
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies, iCR_N, iCR_G1, iCR_G2
 #ifdef TWOMOMENT_ORDER_1
@@ -42,6 +45,7 @@ MODULE TimeSteppingModule_Flash
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 #endif
+  USE RadiationFieldsModule, ONLY: uAR, nAR
 
   USE, INTRINSIC :: ieee_arithmetic, ONLY: &
     IEEE_IS_NAN
@@ -83,7 +87,7 @@ CONTAINS
 
   SUBROUTINE Update_IMEX_PDARS &
     ( dt, U_F, U_R, Explicit_Option, Implicit_Option, &
-      SingleStage_Option, CallFromThornado_Option, BoundaryCondition_Option )
+      SingleStage_Option, CallFromThornado_Option, BoundaryCondition_Option, U_AF, U_AR)
 
     use GeometryFieldsModuleE, only : uGE
     use GeometryFieldsModule,  only : uGF
@@ -113,6 +117,19 @@ CONTAINS
       CallFromThornado_Option
     INTEGER, INTENT(in), OPTIONAL :: &
       BoundaryCondition_Option
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      U_AF(1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nAF)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      U_AR(1:nDOFZ, &
+          iZ_B1(1):iZ_E1(1), &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nCR,1:nSpecies)
 
     LOGICAL  :: &
       Explicit, &
@@ -371,14 +388,16 @@ CONTAINS
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
                U_F, Q1_F, &
-               U_R, Q1_R )
+               U_R, Q1_R, &
+               U_AF, U_AR )
 
 #elif TWOMOMENT_ORDER_V
       CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
                U_F, Q1_F, &
-               U_R, Q1_R )
+               U_R, Q1_R, &
+               U_AF, U_AR )
 #endif
 
     ELSE
@@ -573,14 +592,16 @@ CONTAINS
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
                  uGE, uGF, &
                  U_F, Q1_F, &
-                 U_R, Q1_R )
+                 U_R, Q1_R, &
+                 U_AF, U_AR )
 
 #elif TWOMOMENT_ORDER_V
         CALL ComputeIncrement_TwoMoment_Implicit &
                (iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
                  uGE, uGF, &
                  U_F, Q1_F, &
-                 U_R, Q1_R )
+                 U_R, Q1_R, &
+                 U_AF, U_AR )
 #endif
 
       ELSE

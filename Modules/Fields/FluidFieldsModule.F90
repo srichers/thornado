@@ -87,7 +87,12 @@ MODULE FluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iAF_Xh = 12 ! Heavy Mass Fraction
   INTEGER, PUBLIC, PARAMETER :: iAF_Gm = 13 ! Ratio of Specific Heats
   INTEGER, PUBLIC, PARAMETER :: iAF_Cs = 14 ! Sound Speed
-  INTEGER, PUBLIC, PARAMETER :: nAF    = 14 ! n Auxiliary Fluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iAF_dS1dt = 15  ! Conserved Momentum Density 1 rate of change
+  INTEGER, PUBLIC, PARAMETER :: iAF_dS2dt = 16  ! Conserved Momentum Density 2 rate of change
+  INTEGER, PUBLIC, PARAMETER :: iAF_dS3dt = 17  ! Conserved Momentum Density 3 rate of change
+  INTEGER, PUBLIC, PARAMETER :: iAF_dEdt  = 18  ! Conserved Energy Density rate of change
+  INTEGER, PUBLIC, PARAMETER :: iAF_dNedt = 19  ! Conserved Electron Density rate of change
+  INTEGER, PUBLIC, PARAMETER :: nAF    = 19 ! n Auxiliary Fluid Fields
 
   CHARACTER(32), DIMENSION(nAF), PUBLIC, PARAMETER :: &
     namesAF = [ 'Pressure                        ', &
@@ -103,7 +108,12 @@ MODULE FluidFieldsModule
                 'Alpha Mass Fraction             ', &
                 'Heavy Mass Fraction             ', &
                 'Ratio of Specific Heats (Gamma) ', &
-                'Sound Speed                     ' ]
+                'Sound Speed                     ', &
+                'Rate of Change of Momentum 1    ', &
+                'Rate of Change of Momentum 2    ', &
+                'Rate of Change of Momentum 3    ', &
+                'Rate of Change of Energy        ', &
+                'Rate of Change of Lepton Number ']
 
   CHARACTER(10),  DIMENSION(nAF), PUBLIC, PARAMETER :: &
     ShortNamesAF = [ 'AF_P      ', &
@@ -119,7 +129,12 @@ MODULE FluidFieldsModule
                      'AF_Xa     ', &
                      'AF_Xh     ', &
                      'AF_Gm     ', &
-                     'AF_Cs     ' ]
+                     'AF_Cs     ', &
+                     'AF_dS1dt  ', &
+                     'AF_dS2dt  ', &
+                     'AF_dS3dt  ', &
+                     'AF_dEdt   ', &
+                     'AF_dYedt  ']
 
   REAL(DP), DIMENSION(nAF), PUBLIC :: unitsAF
 

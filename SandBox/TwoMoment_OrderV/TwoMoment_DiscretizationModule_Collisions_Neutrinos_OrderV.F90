@@ -28,7 +28,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
     nAF, iAF_T, iAF_E , iAF_Ye
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
+    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
+    nAR, iAR_FEM
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic, &
     ComputeConserved_Euler_NonRelativistic
@@ -78,7 +79,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, U_AF, U_AR )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -123,6 +124,20 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
+           1:nSpecies)
+    REAL(DP), OPTIONAL, INTENT(in)    :: &
+      U_AF(1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nAF)
+    REAL(DP), OPTIONAL, INTENT(in)    :: &
+      U_AR(1:nDOFZ, &
+           iZ_B1(1):iZ_E1(1), &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nAR, &
            1:nSpecies)
 
     INTEGER :: iN_X, iN_E, iS
