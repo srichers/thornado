@@ -423,7 +423,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: D, FF
     REAL(DP)             :: HeatFluxFactor
 
-    REAL(DP) :: x
+    REAL(DP) :: x, a, lnterm, term_a, term_b
 
 #ifdef MOMENT_CLOSURE_MINERBO
 
@@ -451,12 +451,21 @@ CONTAINS
 #elif  MOMENT_CLOSURE_KERSHAW_BL
     
     HeatFluxFactor &
-    =((D + 1.0_DP) / (24.0_DP*D))*(((D*FF+(1.0_DP-D)**2)/(1.0_DP-D))**4 &
-    -((D*FF-(1.0_DP-D)**2)/(1.0_DP-D))**4)+((2.0_DP-D)/3)*(FF**3+D**2*FF)
+    = ( ( D + One ) / ( 24.0_DP * D ) ) &
+       * ( ( ( D * FF + ( One - D )**2 ) / ( One - D ) )**4 &
+           - ( ( D * FF - ( One - D )**2) / ( One - D ) )**4 ) &
+      + ( ( Two - D ) / Three ) * ( FF**3 + D**2*FF )
 
 #elif  MOMENT_CLOSURE_LEVERMORE
 
-    HeatFluxFactor = 0.0_DP
+    a = SQRT( Four - Three * FF**2 )
+    lnterm = LOG( ( FF - Two + a ) / ( FF + Two - a ) )
+    term_a = lnterm * (-1.5_DP + 9.0_DP * FF**2 / 16.0_DP + Three * ( Two + a )**2 / 16.0_DP + 5.0_DP * ( Two + a )**2 / ( 36.0_DP * ( a - Two ) )  + ( Two + a )**2 / ( 18.0_DP * ( a - Two )**2 ) )
+    term_b = FF * ( 9.0_DP / Four + Three * ( Two + a ) / ( Four * ( a - Two ) ) + ( Two + a ) / ( Three * ( a - Two )**2 ) )
+
+    HeatFluxFactor = term_a + term_b
+    PRINT*, 'LE =', HeatFluxFactor
+    STOP
 
 #endif
 
@@ -492,6 +501,7 @@ CONTAINS
     DO i = 1, SIZE( D )
         HeatFluxFactor(i) = HeatFluxFactor_Scalar( D(i), FF(i) )
     END DO
+
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_BL
 
     HeatFluxFactor = 0.0_DP
@@ -501,9 +511,12 @@ CONTAINS
     DO i = 1, SIZE( D )
         HeatFluxFactor(i) = HeatFluxFactor_Scalar( D(i), FF(i) )
     END DO
+
 #elif  MOMENT_CLOSURE_LEVERMORE
 
-    HeatFluxFactor = 0.0_DP
+    DO i = 1, SIZE( D )
+        HeatFluxFactor(i) = HeatFluxFactor_Scalar( D(i), FF(i) )
+    END DO
 
 #endif
 
