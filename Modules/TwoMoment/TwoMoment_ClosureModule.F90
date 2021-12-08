@@ -464,8 +464,6 @@ CONTAINS
     term_b = FF * ( 9.0_DP / Four + Three * ( Two + a ) / ( Four * ( a - Two ) ) + ( Two + a ) / ( Three * ( a - Two )**2 ) )
 
     HeatFluxFactor = term_a + term_b
-    PRINT*, 'LE =', HeatFluxFactor
-    STOP
 
 #endif
 
