@@ -460,8 +460,15 @@ CONTAINS
 
     a = SQRT( Four - Three * FF**2 )
     lnterm = LOG( ( FF - Two + a ) / ( FF + Two - a ) )
-    term_a = lnterm * (-1.5_DP + 9.0_DP * FF**2 / 16.0_DP + Three * ( Two + a )**2 / 16.0_DP + 5.0_DP * ( Two + a )**2 / ( 36.0_DP * ( a - Two ) )  + ( Two + a )**2 / ( 18.0_DP * ( a - Two )**2 ) )
-    term_b = FF * ( 9.0_DP / Four + Three * ( Two + a ) / ( Four * ( a - Two ) ) + ( Two + a ) / ( Three * ( a - Two )**2 ) )
+    term_a &
+      = lnterm * (-1.5_DP + 9.0_DP * FF**2 / 16.0_DP                    &
+                  + Three * ( Two + a )**2 / 16.0_DP                    &
+                  + 5.0_DP * ( Two + a )**2 / ( 36.0_DP * ( a - Two ) ) &  
+                  + ( Two + a )**2 / ( 18.0_DP * ( a - Two )**2 ) )
+    term_b &
+      = FF * ( 9.0_DP / Four                                            &
+               + Three * ( Two + a ) / ( Four * ( a - Two ) )           &
+               + ( Two + a ) / ( Three * ( a - Two )**2 ) )
 
     HeatFluxFactor = term_a + term_b
 
