@@ -25,7 +25,7 @@ MODULE TimeSteppingModule_Flash
     nAF, uAF, iAF_dS1dt, iAF_dS2dt, iAF_dS3dt, &
     iAF_dEdt, iAF_dNedt
   USE RadiationFieldsModule, ONLY: &
-    nCR, nSpecies, iCR_N, iCR_G1, iCR_G2
+    nCR, nSpecies, iCR_N, iCR_G1, iCR_G2, nAR
 #ifdef TWOMOMENT_ORDER_1
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
@@ -117,7 +117,7 @@ CONTAINS
       CallFromThornado_Option
     INTEGER, INTENT(in), OPTIONAL :: &
       BoundaryCondition_Option
-    REAL(DP), INTENT(inout), OPTIONAL :: &
+    REAL(DP), INTENT(in), OPTIONAL :: &
       U_AF(1:nDOFX, &
           iZ_B1(2):iZ_E1(2), &
           iZ_B1(3):iZ_E1(3), &
@@ -129,7 +129,7 @@ CONTAINS
           iZ_B1(2):iZ_E1(2), &
           iZ_B1(3):iZ_E1(3), &
           iZ_B1(4):iZ_E1(4), &
-          1:nCR,1:nSpecies)
+          1:nAR,1:nSpecies)
 
     LOGICAL  :: &
       Explicit, &
