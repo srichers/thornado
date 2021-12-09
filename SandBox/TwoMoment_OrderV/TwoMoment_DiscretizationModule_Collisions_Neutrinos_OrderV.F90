@@ -25,7 +25,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_T, iAF_E , iAF_Ye
+    nAF, iAF_T, iAF_E , iAF_Ye, iAF_dS1dt
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
@@ -62,6 +62,21 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
 
   REAL(DP), ALLOCATABLE, TARGET :: CR_N(:,:,:,:)
   REAL(DP), ALLOCATABLE, TARGET :: PR_N(:,:,:,:)
+
+  ! variables only for M1MC algorithm
+  ! FEM = fraction of emissivity to moments
+  ! fluidTimeDerivative = constant time derivative of fluid:
+  ! dEdt = constant time derivative of fluid internal energy density
+  ! dldt = constant time derivative of fluid lepton (electron) density
+  ! dS*dt = constant time derivative of fluid specific momentum
+  INTEGER, PARAMETER :: nFluidTimeDerivatives = 5
+  INTEGER, PARAMETER :: iFTD_dEdt = 1
+  INTEGER, PARAMETER :: iFTD_dldt = 2
+  INTEGER, PARAMETER :: iFTD_dS1dt = 3
+  INTEGER, PARAMETER :: iFTD_dS2dt = 4
+  INTEGER, PARAMETER :: iFTD_dS3dt = 5
+  REAL(DP), ALLOCATABLE, TARGET :: FEM(:,:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: fluidTimeDerivatives(:,:)
 
   REAL(DP), DIMENSION(:), CONTIGUOUS, POINTER :: N_P, G1_P, G2_P, G3_P
   REAL(DP), DIMENSION(:), CONTIGUOUS, POINTER :: J_P, H1_P, H2_P, H3_P
@@ -141,13 +156,15 @@ CONTAINS
            1:nSpecies)
 
     INTEGER :: iN_X, iN_E, iS
+    LOGICAL :: doM1MC
 
     CALL TimersStart( Timer_Collisions )
 
     ! PRINT*, "--- In implicit solve ---"
     ! PRINT*, "--- Initializing ---"
 
-    CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+    doM1MC = PRESENT(U_AR)
+    CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, doM1MC=doM1MC )
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -161,7 +178,7 @@ CONTAINS
 
     ! PRINT*, "--- Mapping data ---"
 
-    CALL MapDataForCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
+    CALL MapDataForCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, U_AF, U_AR )
 
     ! ! --- REMOVE UNIT MODULE AFTER DEBUGGING ---
     ! PRINT*, "CF_D = ", CF_N(:,iCF_D) / (Gram / Centimeter**3)
@@ -377,10 +394,11 @@ CONTAINS
   ! --- Private Subroutines ---
 
 
-  SUBROUTINE InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+  SUBROUTINE InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, doM1MC )
 
     INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4)
     INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4)
+    LOGICAL, INTENT(in) :: doM1MC
 
     INTEGER :: iN_X, iN_E, iS, iZ, nZ_G
 
@@ -406,6 +424,12 @@ CONTAINS
 
     ALLOCATE( CR_N(nE_G,nX_G,nSpecies,nCR) )
     ALLOCATE( PR_N(nE_G,nX_G,nSpecies,nCR) )
+
+    ! allocate variables specifically part of the M1MC routines
+    IF (doM1MC) THEN
+       ALLOCATE( FEM(nE_G,nX_G,nSpecies) )
+       ALLOCATE( fluidTimeDerivatives(nX_G, nFluidTimeDerivatives) )
+    END IF
 
     ALLOCATE( PositionIndexZ(nZ_G) )
 
@@ -484,6 +508,12 @@ CONTAINS
     DEALLOCATE( nIterations_Outer )
     DEALLOCATE( nIterations_Prim )
 
+    ! allocate variables specifically part of the M1MC routines
+    IF (doM1MC) THEN
+       DEALLOCATE( FEM )
+       DEALLOCATE( fluidTimeDerivatives )
+    END IF
+
     NULLIFY( N_P, G1_P, G2_P, G3_P )
     NULLIFY( J_P, H1_P, H2_P, H3_P )
 
@@ -493,7 +523,7 @@ CONTAINS
 
 
   SUBROUTINE MapDataForCollisions &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, U_AF, U_AR )
 
     INTEGER,  INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -521,8 +551,22 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      U_AF(1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nAF)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      U_AR(1:nDOFZ, &
+          iZ_B1(1):iZ_E1(1), &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nAR,1:nSpecies)
 
-    INTEGER :: iGE, iGF, iCF, iCR, iS
+
+    INTEGER :: iGE, iGF, iCF, iCR, iS, iFTD
     INTEGER :: iE, iX1, iX2, iX3
     INTEGER :: iNodeE, iNodeX, iNodeZ
     INTEGER :: iN_E, iN_X
@@ -603,6 +647,34 @@ CONTAINS
     END DO
     END DO
 
+    ! --- Fluid Time Derivatives ---
+
+    if (PRESENT(U_AF)) THEN
+#if   defined(THORNADO_OMP_OL)
+       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iNodeX, iX1, iX2, iX3 ) &
+    !$ACC PRESENT( nX, iX_B0, fluidTimeDerivatives, U_AF )
+#elif defined(THORNADO_OMP  )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
+#endif
+    DO iFTD  = 1, nFluidTimeDerivatives
+    DO iN_X = 1, nX_G
+
+      iX3    = MOD( (iN_X-1) / ( nDOFX * nX(1) * nX(2) ), nX(3) ) + iX_B0(3)
+      iX2    = MOD( (iN_X-1) / ( nDOFX * nX(1)         ), nX(2) ) + iX_B0(2)
+      iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
+      iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
+
+      fluidTimeDerivatives(iN_X,iFTD) = U_AF(iNodeX,iX1,iX2,iX3,iFTD + iAF_dS1dt - 1)
+
+    END DO
+    END DO
+    END IF
+
     ! --- Radiation Fields ---
 
 #if   defined(THORNADO_OMP_OL)
@@ -638,6 +710,41 @@ CONTAINS
     END DO
     END DO
 
+    ! --- Fraction of Emissivity for Moments ---
+    IF (PRESENT(U_AR)) THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( iNodeZ, iNodeX, iNodeE, iE, iX1, iX2, iX3 )
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( iNodeZ, iNodeX, iNodeE, iE, iX1, iX2, iX3 ) &
+    !$ACC PRESENT( nZ, nX, iX_B0, FEM, U_AR )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( iNodeZ, iNodeX, iNodeE, iE, iX1, iX2, iX3 )
+#endif
+    DO iS   = 1, nSpecies
+    DO iN_X = 1, nX_G
+    DO iN_E = 1, nE_G
+
+      iE     = MOD( (iN_E-1) / nDOFE, nZ(1) ) + iE_B0
+      iNodeE = MOD( (iN_E-1)        , nDOFE ) + 1
+
+      iX3    = MOD( (iN_X-1) / ( nDOFX * nX(1) * nX(2) ), nX(3) ) + iX_B0(3)
+      iX2    = MOD( (iN_X-1) / ( nDOFX * nX(1)         ), nX(2) ) + iX_B0(2)
+      iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
+      iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
+
+      iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+      FEM(iN_E,iN_X,iS) = U_AR(iNodeZ,iE,iX1,iX2,iX3,iAR_FEM,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END IF
+    
   END SUBROUTINE MapDataForCollisions
 
 
