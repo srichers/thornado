@@ -70,11 +70,11 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
   ! dldt = constant time derivative of fluid lepton (electron) density
   ! dS*dt = constant time derivative of fluid specific momentum
   INTEGER, PARAMETER :: nFluidTimeDerivatives = 5
-  INTEGER, PARAMETER :: iFTD_dEdt = 1
-  INTEGER, PARAMETER :: iFTD_dldt = 2
-  INTEGER, PARAMETER :: iFTD_dS1dt = 3
-  INTEGER, PARAMETER :: iFTD_dS2dt = 4
-  INTEGER, PARAMETER :: iFTD_dS3dt = 5
+  INTEGER, PARAMETER :: iFTD_dS1dt = 1
+  INTEGER, PARAMETER :: iFTD_dS2dt = 2
+  INTEGER, PARAMETER :: iFTD_dS3dt = 3
+  INTEGER, PARAMETER :: iFTD_dEdt = 4
+  INTEGER, PARAMETER :: iFTD_dldt = 5
   REAL(DP), ALLOCATABLE, TARGET :: FEM(:,:,:)
   REAL(DP), ALLOCATABLE, TARGET :: fluidTimeDerivatives(:,:)
 
@@ -86,6 +86,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV
   INTEGER, ALLOCATABLE :: nIterations_Inner(:)
   INTEGER, ALLOCATABLE :: nIterations_Outer(:)
   INTEGER, ALLOCATABLE :: nIterations_Prim(:)
+
+  LOGICAL :: doM1MC
 
 CONTAINS
 
@@ -156,7 +158,6 @@ CONTAINS
            1:nSpecies)
 
     INTEGER :: iN_X, iN_E, iS
-    LOGICAL :: doM1MC
 
     CALL TimersStart( Timer_Collisions )
 
@@ -164,7 +165,7 @@ CONTAINS
     ! PRINT*, "--- Initializing ---"
 
     doM1MC = PRESENT(U_AR)
-    CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, doM1MC=doM1MC )
+    CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1)
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -283,8 +284,34 @@ CONTAINS
 
     CALL TimersStart( Timer_Collisions_Solve )
 
-    CALL SolveNeutrinoMatterCoupling_FP_Nested_AA &
-           ( dt, &
+    IF (doM1MC) THEN
+       CALL SolveNeutrinoMatterCoupling_FP_Nested_AA &
+            ( dt, &
+             PR_N(:,:,:,iCR_N ), &
+             PR_N(:,:,:,iCR_G1), &
+             PR_N(:,:,:,iCR_G2), &
+             PR_N(:,:,:,iCR_G3), &
+             PF_N(:,iPF_V1), &
+             PF_N(:,iPF_V2), &
+             PF_N(:,iPF_V3), &
+             PF_N(:,iPF_D ), &
+             AF_N(:,iAF_T ), &
+             AF_N(:,iAF_Ye), &
+             AF_N(:,iAF_E ), &
+             GX_N(:,iGF_Gm_dd_11), &
+             GX_N(:,iGF_Gm_dd_22), &
+             GX_N(:,iGF_Gm_dd_33), &
+             nIterations_Inner, &
+             nIterations_Outer, &
+             FEM, &
+             fluidTimeDerivatives(:,iFTD_dS1dt), &
+             fluidTimeDerivatives(:,iFTD_dS2dt), &
+             fluidTimeDerivatives(:,iFTD_dS3dt), &
+             fluidTimeDerivatives(:,iFTD_dEdt), &
+             fluidTimeDerivatives(:,iFTD_dldt))
+    ELSE
+       CALL SolveNeutrinoMatterCoupling_FP_Nested_AA &
+            ( dt, &
              PR_N(:,:,:,iCR_N ), &
              PR_N(:,:,:,iCR_G1), &
              PR_N(:,:,:,iCR_G2), &
@@ -301,6 +328,7 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_33), &
              nIterations_Inner, &
              nIterations_Outer )
+    END IF
 
     CALL TimersStop( Timer_Collisions_Solve )
 
@@ -394,11 +422,10 @@ CONTAINS
   ! --- Private Subroutines ---
 
 
-  SUBROUTINE InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, doM1MC )
+  SUBROUTINE InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
     INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4)
     INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4)
-    LOGICAL, INTENT(in) :: doM1MC
 
     INTEGER :: iN_X, iN_E, iS, iZ, nZ_G
 
@@ -739,7 +766,6 @@ CONTAINS
 
       FEM(iN_E,iN_X,iS) = U_AR(iNodeZ,iE,iX1,iX2,iX3,iAR_FEM,iS)
 
-    END DO
     END DO
     END DO
     END DO

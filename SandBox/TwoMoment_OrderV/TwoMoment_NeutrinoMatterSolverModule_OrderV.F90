@@ -575,7 +575,8 @@ CONTAINS
 
   SUBROUTINE SolveNeutrinoMatterCoupling_FP_Nested_AA &
     ( dt, J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, D, T, Y, E, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Inner, nIterations_Outer )
+    Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Inner, nIterations_Outer, &
+    FEM, dS1dt, dS2dt, dS3dt, dEdt, dldt)
 
     REAL(DP),                   INTENT(in)    :: dt
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: J, H_u_1, H_u_2, H_u_3
@@ -583,6 +584,8 @@ CONTAINS
     REAL(DP), DIMENSION(:),     INTENT(inout) :: D, T, Y, E
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     INTEGER,  DIMENSION(:),     INTENT(out)   :: nIterations_Inner, nIterations_Outer
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)   , OPTIONAL :: FEM
+    REAL(DP), DIMENSION(:),     INTENT(in)   , OPTIONAL :: dS1dt, dS2dt, dS3dt, dEdt, dldt ! specific momenta, internal energy density, and lepton number density
 
     ! --- Local Variables ---
 
@@ -598,7 +601,8 @@ CONTAINS
 
     CALL InitializeRHS_FP &
            ( J, H_u_1, H_u_2, H_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
-             Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+           Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+           dS1dt, dS2dt, dS3dt, dEdt, dldt)
 
     CALL TimersStop( Timer_Collisions_InitializeRHS )
 
@@ -666,10 +670,17 @@ CONTAINS
 
         CALL TimersStart( Timer_Collisions_NeutrinoRHS )
 
-        CALL ComputeNeutrinoRHS_FP &
+        IF (PRESENT(FEM)) THEN
+           CALL ComputeNeutrinoRHS_FP &
+               ( ITERATE_inner, FVECm_inner, GVECm_inner, dt, &
+                 J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33, FEM )
+        ELSE
+           CALL ComputeNeutrinoRHS_FP &
                ( ITERATE_inner, FVECm_inner, GVECm_inner, dt, &
                  J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
                  Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+        END IF
 
         CALL TimersStop( Timer_Collisions_NeutrinoRHS )
 
@@ -1255,11 +1266,13 @@ CONTAINS
 
   SUBROUTINE InitializeRHS_FP &
     ( J, H_u_1, H_u_2, H_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    dS1dt, dS2dt, dS3dt, dEdt, dldt)
 
     REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: J, H_u_1, H_u_2, H_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)  :: D, Y, E, V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:),     INTENT(in)   , OPTIONAL :: dS1dt, dS2dt, dS3dt, dEdt, dldt ! specific momenta, internal energy density, and lepton number density
 
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: k_dd(3,3), vDotV, vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
@@ -1315,7 +1328,6 @@ CONTAINS
       U_V_d_3(iN_X) = V_d_3(iN_X) / SpeedOfLight
 
       ! --- Include Old Matter State in Constant (C) Terms ---
-
       C_Y    (iN_X) = Zero
       C_Ef   (iN_X) = Zero
       C_V_d_1(iN_X) = Zero
@@ -1453,6 +1465,19 @@ CONTAINS
       !C_V_d_1(iN_X) = SUM_V1
       !C_V_d_2(iN_X) = SUM_V2
       !C_V_d_3(iN_X) = SUM_V3
+
+
+      !add in contribution from Monte Carlo
+      IF (PRESENT(dEdt)) THEN
+         C_Y    (iN_X) = dldt(iN_X)
+         C_Ef   (iN_X) = dEdt(iN_X) + &
+              V_d_1(iN_X)*dS1dt(iN_X) + &
+              V_d_2(iN_X)*dS2dt(iN_X) + &
+              V_d_3(iN_X)*dS3dt(iN_X)
+         C_V_d_1(iN_X) = dS1dt(iN_X)
+         C_V_d_2(iN_X) = dS2dt(iN_X)
+         C_V_d_3(iN_X) = dS3dt(iN_X)
+      END IF
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
@@ -1659,7 +1684,7 @@ CONTAINS
   SUBROUTINE ComputeNeutrinoRHS_FP &
     ( MASK, Fm, Gm, dt, &
       J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, FEM )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
@@ -1667,6 +1692,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: J, H_u_1, H_u_2, H_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:,:), OPTIONAL, INTENT(in) :: FEM
 
     INTEGER  :: iN_E, iN_X, iS, iOS
     REAL(DP) :: k_dd(3,3), vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3
@@ -1715,9 +1741,15 @@ CONTAINS
 
         ! --- Emissivity ---
 
+        IF (PRESENT(FEM)) THEN
+        Eta_T =   Chi     (iN_E,iN_X,iS) * J0(iN_E,iN_X,iS) * FEM(iN_E, iN_X, iS)&
+                + Eta_NES (iN_E,iN_X,iS) &
+                + Eta_Pair(iN_E,iN_X,iS)
+        ELSE
         Eta_T =   Chi     (iN_E,iN_X,iS) * J0(iN_E,iN_X,iS) &
                 + Eta_NES (iN_E,iN_X,iS) &
                 + Eta_Pair(iN_E,iN_X,iS)
+        END IF
 
         ! --- Number Opacity ---
 
