@@ -38,6 +38,9 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiplyBatched
 
+  USE, INTRINSIC :: ieee_arithmetic, ONLY: &
+    IEEE_IS_NAN
+
   IMPLICIT NONE
   PRIVATE
 
@@ -1576,7 +1579,7 @@ CONTAINS
     a = Half * ( One - EF )
     b = Half * ( Three * EF - One )
 
-    h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+    h_u = [ I_u_1, I_u_2, I_u_3 ] / SIGN( MAX( ABS( FF * D ), SqrtTiny ), FF )
 
     Gm_uu      = Zero
     Gm_uu(1,1) = One / Gm_dd_11
@@ -1653,8 +1656,10 @@ CONTAINS
       EddingtonTensorComponents_dd(3,3)
 
     INTEGER  :: i, j
-    REAL(DP) :: FF, EF, a, b
+    REAL(DP) :: FF, EF, a, b, denum
     REAL(DP) :: h_d(3), Gm_dd(3,3)
+
+    IF( IEEE_IS_NAN( D ) ) STOP 'NAN D input EddingtonTensorComponents_dd'
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
@@ -1663,9 +1668,14 @@ CONTAINS
     a = Half * ( One - EF )
     b = Half * ( Three * EF - One )
 
-    h_d(1) = Gm_dd_11 * I_u_1 / ( FF * D )
-    h_d(2) = Gm_dd_22 * I_u_2 / ( FF * D )
-    h_d(3) = Gm_dd_33 * I_u_3 / ( FF * D )
+    denum = SIGN( MAX( ABS( FF * D ), SqrtTiny ), FF )
+
+    IF( denum /= FF * D .AND. ABS( FF * D ) > 1.0e-100 ) &
+      PRINT*, 'FF, D, FF * D, denum', FF, D, FF * D, denum
+
+    h_d(1) = Gm_dd_11 * I_u_1 / denum
+    h_d(2) = Gm_dd_22 * I_u_2 / denum
+    h_d(3) = Gm_dd_33 * I_u_3 / denum
 
     Gm_dd = Zero
     Gm_dd(1,1) = Gm_dd_11
@@ -1753,7 +1763,7 @@ CONTAINS
     a = Half * ( FF - HF )
     b = Half * ( Five * HF - Three * FF )
 
-    h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+    h_u = [ I_u_1, I_u_2, I_u_3 ] / SIGN( MAX( ABS( FF * D ), SqrtTiny ), FF )
 
     Gm_uu      = Zero
     Gm_uu(1,1) = One / Gm_dd_11
