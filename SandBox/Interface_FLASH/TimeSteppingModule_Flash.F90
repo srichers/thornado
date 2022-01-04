@@ -388,8 +388,7 @@ CONTAINS
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
                U_F, Q1_F, &
-               U_R, Q1_R, &
-               U_AF, U_AR )
+               U_R, Q1_R )
 
 #elif TWOMOMENT_ORDER_V
       CALL ComputeIncrement_TwoMoment_Implicit &
@@ -592,8 +591,7 @@ CONTAINS
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
                  uGE, uGF, &
                  U_F, Q1_F, &
-                 U_R, Q1_R, &
-                 U_AF, U_AR )
+                 U_R, Q1_R )
 
 #elif TWOMOMENT_ORDER_V
         CALL ComputeIncrement_TwoMoment_Implicit &
